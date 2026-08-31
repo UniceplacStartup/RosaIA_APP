@@ -128,8 +128,6 @@ export default function CadastroScreen({ navigation }: any) {
     setCarregando(true);
     try {
       await createUserWithEmailAndPassword(auth, email.trim(), senha);
-      // Conta criada com sucesso — sem popup. Quando o navigator estiver
-      // pronto, aqui entra: navigation.replace("Login") ou direto pro Chat.
     } catch (erro: any) {
       Alert.alert("Erro", mensagemDeErro(erro.code));
     } finally {

@@ -1,4 +1,51 @@
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import PlaceholderScreen from "./src/screens/PlaceholderScreen";
 import CadastroScreen from "./src/screens/auth/CadastroScreen";
+
+const Stack = createNativeStackNavigator();
+
 export default function App() {
-  return <CadastroScreen />;
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Cadastro"
+        screenOptions={{ headerShown: false }}
+      >
+        {/* Suas telas (auth) */}
+        <Stack.Screen name="Cadastro" component={CadastroScreen} />
+        <Stack.Screen name="Login">
+          {() => <PlaceholderScreen nome="Login" />}
+        </Stack.Screen>
+        <Stack.Screen name="RecuperarSenha">
+          {() => <PlaceholderScreen nome="Recuperação de Senha" />}
+        </Stack.Screen>
+        <Stack.Screen name="TermosDeUso">
+          {() => <PlaceholderScreen nome="Termos de Uso" />}
+        </Stack.Screen>
+        <Stack.Screen name="Perfil">
+          {() => <PlaceholderScreen nome="Perfil" />}
+        </Stack.Screen>
+        <Stack.Screen name="ExcluirConta">
+          {() => <PlaceholderScreen nome="Excluir Conta" />}
+        </Stack.Screen>
+
+        {/* Telas da Isadora (main) */}
+        <Stack.Screen name="Splash">
+          {() => <PlaceholderScreen nome="Splash" />}
+        </Stack.Screen>
+        <Stack.Screen name="BoasVindas">
+          {() => <PlaceholderScreen nome="Boas-vindas" />}
+        </Stack.Screen>
+        <Stack.Screen name="Chat">
+          {() => <PlaceholderScreen nome="Chat" />}
+        </Stack.Screen>
+        <Stack.Screen name="Sobre">
+          {() => <PlaceholderScreen nome="Sobre a RosaIA" />}
+        </Stack.Screen>
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }
