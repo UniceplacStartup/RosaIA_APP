@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import PlaceholderScreen from "./src/screens/PlaceholderScreen";
 import CadastroScreen from "./src/screens/auth/CadastroScreen";
+import LoginScreen from "./src/screens/auth/LoginScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -16,9 +17,7 @@ export default function App() {
       >
         {/* Suas telas (auth) */}
         <Stack.Screen name="Cadastro" component={CadastroScreen} />
-        <Stack.Screen name="Login">
-          {() => <PlaceholderScreen nome="Login" />}
-        </Stack.Screen>
+        <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="RecuperarSenha">
           {() => <PlaceholderScreen nome="Recuperação de Senha" />}
         </Stack.Screen>

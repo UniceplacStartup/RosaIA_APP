@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../config/firebase";
 
 const CorDestaque = "#8E1948";
@@ -66,69 +66,38 @@ function CampoComIcone({
   );
 }
 
-export default function CadastroScreen({ navigation }: any) {
-  const [nome, setNome] = useState("");
+export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
-  const [aceitouTermos, setAceitouTermos] = useState(false);
-  const [carregando, setCarregando] = useState(false);
+  const [lembrarAcesso, setLembrarAcesso] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
-
-  function emailValido(valor: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor);
-  }
-
-  function senhaForte(valor: string) {
-    const temMaiuscula = /[A-Z]/.test(valor);
-    const temNumero = /[0-9]/.test(valor);
-    const temEspecial = /[^A-Za-z0-9]/.test(valor);
-    return valor.length >= 8 && temMaiuscula && temNumero && temEspecial;
-  }
+  const [carregando, setCarregando] = useState(false);
 
   function mensagemDeErro(codigo: string) {
     switch (codigo) {
-      case "auth/email-already-in-use":
-        return "Este e-mail já está cadastrado.";
       case "auth/invalid-email":
         return "E-mail inválido.";
-      case "auth/weak-password":
-        return "A senha precisa ter pelo menos 6 caracteres.";
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+      case "auth/user-not-found":
+        return "E-mail ou senha incorretos.";
+      case "auth/too-many-requests":
+        return "Muitas tentativas. Tente novamente em alguns minutos.";
       default:
-        return "Não foi possível criar a conta. Tente novamente.";
+        return "Não foi possível entrar. Tente novamente.";
     }
   }
 
-  async function handleCriarConta() {
-    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
-      Alert.alert("Campos obrigatórios", "Preencha todos os campos.");
-      return;
-    }
-    if (!emailValido(email)) {
-      Alert.alert("E-mail inválido", "Digite um e-mail válido.");
-      return;
-    }
-    if (senha !== confirmarSenha) {
-      Alert.alert("Senhas diferentes", "A senha e a confirmação não coincidem.");
-      return;
-    }
-    if (!senhaForte(senha)) {
-      Alert.alert(
-        "Senha fraca",
-        "A senha precisa ter no mínimo 8 caracteres, incluindo 1 letra maiúscula, 1 número e 1 caractere especial."
-      );
-      return;
-    }
-    if (!aceitouTermos) {
-      Alert.alert("Termos de Uso", "Você precisa aceitar os Termos de Uso.");
+  async function handleEntrar() {
+    if (!email.trim() || !senha) {
+      Alert.alert("Campos obrigatórios", "Preencha e-mail e senha.");
       return;
     }
 
     setCarregando(true);
     try {
-      await createUserWithEmailAndPassword(auth, email.trim(), senha);
-      navigation.replace("Login");
+      await signInWithEmailAndPassword(auth, email.trim(), senha);
+      // navigation.replace("Chat"); // ligamos quando a tela de Chat existir
     } catch (erro: any) {
       Alert.alert("Erro", mensagemDeErro(erro.code));
     } finally {
@@ -144,15 +113,8 @@ export default function CadastroScreen({ navigation }: any) {
           <Text style={styles.nomeApp}>Rosa IA</Text>
         </View>
 
-        <Text style={styles.titulo}>Criar Conta</Text>
+        <Text style={styles.titulo}>Acessar Conta</Text>
 
-        <CampoComIcone
-          icone="person-outline"
-          label="Nome Completo"
-          valor={nome}
-          aoMudar={setNome}
-          placeholder="Digite seu nome completo"
-        />
         <CampoComIcone
           icone="mail-outline"
           label="E-mail"
@@ -171,38 +133,31 @@ export default function CadastroScreen({ navigation }: any) {
           mostrarTexto={mostrarSenha}
           aoAlternarMostrar={() => setMostrarSenha(!mostrarSenha)}
         />
-        <CampoComIcone
-          icone="lock-closed-outline"
-          label="Confirmar Senha"
-          valor={confirmarSenha}
-          aoMudar={setConfirmarSenha}
-          placeholder="Confirme sua senha"
-          secreto
-          mostrarTexto={mostrarConfirmarSenha}
-          aoAlternarMostrar={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
-        />
 
-        <TouchableOpacity style={styles.linhaTermos} onPress={() => setAceitouTermos(!aceitouTermos)}>
+        <TouchableOpacity style={styles.linhaLembrar} onPress={() => setLembrarAcesso(!lembrarAcesso)}>
           <View style={styles.checkbox}>
-            {aceitouTermos && <Ionicons name="checkmark" size={14} color={CorDestaque} />}
+            {lembrarAcesso && <Ionicons name="checkmark" size={14} color={CorDestaque} />}
           </View>
-          <Text style={styles.textoTermos}>
-            Eu li e concordo com os <Text style={styles.linkDestacado}>Termos de Uso</Text> e a{" "}
-            <Text style={styles.linkDestacado}>Política de Privacidade</Text>.
+          <Text style={styles.textoLembrar}>
+            Lembrar do meu acesso ao <Text style={styles.linkDestacado}>Rosa IA</Text>
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.botao} onPress={handleCriarConta} disabled={carregando}>
+        <TouchableOpacity style={styles.botao} onPress={handleEntrar} disabled={carregando}>
           {carregando ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.textoBotao}>Criar conta</Text>
+            <Text style={styles.textoBotao}>Entrar</Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation?.navigate("Login")}>
+        <TouchableOpacity onPress={() => navigation?.navigate("RecuperarSenha")}>
+          <Text style={styles.linkEsqueci}>Esqueci minha senha</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation?.navigate("Cadastro")}>
           <Text style={styles.linkLogin}>
-            Já possui uma conta? <Text style={styles.linkDestacado}>Entrar</Text>
+            Não possui uma conta? <Text style={styles.linkDestacado}>Criar</Text>
           </Text>
         </TouchableOpacity>
 
@@ -218,7 +173,7 @@ const styles = StyleSheet.create({
   cabecalho: { flexDirection: "row", alignItems: "center", justifyContent: "flex-start", marginBottom: 0 },
   logo: { width: 190, height: 190, resizeMode: "contain", marginRight: -20 },
   nomeApp: { fontSize: 26, fontWeight: "bold", color: "#fff" },
-  titulo: { fontSize: 42, fontWeight: "bold", color: "#fff", textAlign: "center", marginTop: -28, marginBottom: 20 },
+  titulo: { fontSize: 42, fontWeight: "bold", color: "#fff", textAlign: "center", marginTop: -28, marginBottom: 80 },
   campoComIcone: {
     flexDirection: "row",
     alignItems: "center",
@@ -226,14 +181,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 16,
+    marginBottom: 22,
   },
   iconeEsquerda: { marginRight: 8 },
   iconeDireita: { marginLeft: 8 },
   labelDentro: { color: "#2A0A16", fontWeight: "600", fontSize: 13 },
   asterisco: { color: "#FF3B30" },
   inputDentro: { color: "#2A0A16", fontSize: 15, paddingVertical: 2 },
-  linhaTermos: { flexDirection: "row", alignItems: "center", marginVertical: 16 },
+  linhaLembrar: { flexDirection: "row", alignItems: "center", marginVertical: 16 },
   checkbox: {
     width: 20,
     height: 20,
@@ -243,10 +198,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  textoTermos: { color: "#2A0A16", flex: 1, fontSize: 13 },
+  textoLembrar: { color: "#2A0A16", fontSize: 13 },
   linkDestacado: { color: CorDestaque, fontWeight: "bold" },
-  botao: { backgroundColor: CorDestaque, borderRadius: 30, padding: 16, alignItems: "center", marginTop: 16 },
+  botao: { backgroundColor: CorDestaque, borderRadius: 30, padding: 16, alignItems: "center", marginTop: 28 },
   textoBotao: { color: "#fff", fontWeight: "bold", fontSize: 16 },
-  linkLogin: { color: "#2A0A16", textAlign: "center", marginTop: 16 },
-  logoUniceplac: { width: 170, height: 100, resizeMode: "contain", alignSelf: "center", marginTop: 12 },
+  linkEsqueci: { color: CorDestaque, fontWeight: "bold", textAlign: "center", marginTop: 30 },
+  linkLogin: { color: "#2A0A16", textAlign: "center", marginTop: 34 },
+  logoUniceplac: { width: 170, height: 100, resizeMode: "contain", alignSelf: "center", marginTop: 32 },
 });
