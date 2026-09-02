@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../../config/firebase";
 
 const CorDestaque = "#8E1948";
@@ -133,7 +133,8 @@ export default function CadastroScreen({ navigation, route}: any) {
 
     setCarregando(true);
     try {
-      await createUserWithEmailAndPassword(auth, email.trim(), senha);
+      const credencial = await createUserWithEmailAndPassword(auth, email.trim(), senha);
+      await updateProfile(credencial.user, { displayName: nome.trim() });
       navigation.replace("Login");
     } catch (erro: any) {
       Alert.alert("Erro", mensagemDeErro(erro.code));

@@ -7,6 +7,7 @@ import CadastroScreen from "./src/screens/auth/CadastroScreen";
 import LoginScreen from "./src/screens/auth/LoginScreen";
 import RecuperarSenhaScreen from "./src/screens/auth/RecuperarSenhaScreen";
 import TermosDeUsoScreen from "./src/screens/auth/TermosDeUsoScreen";
+import PerfilScreen from "./src/screens/auth/PerfilScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -22,9 +23,7 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="RecuperarSenha" component={RecuperarSenhaScreen} />
         <Stack.Screen name="TermosDeUso" component={TermosDeUsoScreen} />
-        <Stack.Screen name="Perfil">
-          {() => <PlaceholderScreen nome="Perfil" />}
-        </Stack.Screen>
+        <Stack.Screen name="Perfil" component={PerfilScreen} />
         <Stack.Screen name="ExcluirConta">
           {() => <PlaceholderScreen nome="Excluir Conta" />}
         </Stack.Screen>
