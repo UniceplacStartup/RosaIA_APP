@@ -169,10 +169,10 @@ export default function LoginScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { flex: 1, padding: 20, paddingTop: 18, justifyContent: "flex-start" },
+  container: { flex: 1, padding: 20, paddingTop: 40, justifyContent: "flex-start" },
   cabecalho: { flexDirection: "row", alignItems: "center", justifyContent: "flex-start", marginBottom: 0 },
   logo: { width: 190, height: 190, resizeMode: "contain", marginRight: -20 },
-  nomeApp: { fontSize: 26, fontWeight: "bold", color: "#fff" },
+  nomeApp: { fontSize: 26, fontWeight: "bold", color: "#fff", marginTop: -30 },
   titulo: { fontSize: 42, fontWeight: "bold", color: "#fff", textAlign: "center", marginTop: -28, marginBottom: 80 },
   campoComIcone: {
     flexDirection: "row",
@@ -204,5 +204,5 @@ const styles = StyleSheet.create({
   textoBotao: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   linkEsqueci: { color: CorDestaque, fontWeight: "bold", textAlign: "center", marginTop: 30 },
   linkLogin: { color: "#2A0A16", textAlign: "center", marginTop: 34 },
-  logoUniceplac: { width: 170, height: 100, resizeMode: "contain", alignSelf: "center", marginTop: 32 },
+  logoUniceplac: { width: 170, height: 100, resizeMode: "contain", alignSelf: "center", marginTop: 20 },
 });

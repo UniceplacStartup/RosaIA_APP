@@ -104,10 +104,10 @@ export default function RecuperarSenhaScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { flex: 1, padding: 20, paddingTop: 18, justifyContent: "flex-start" },
+  container: { flex: 1, padding: 20, paddingTop: 40, justifyContent: "flex-start" },
   cabecalho: { flexDirection: "row", alignItems: "center", justifyContent: "flex-start", marginBottom: 0 },
   logo: { width: 190, height: 190, resizeMode: "contain", marginRight: -20 },
-  nomeApp: { fontSize: 26, fontWeight: "bold", color: "#fff" },
+  nomeApp: { fontSize: 26, fontWeight: "bold", color: "#fff", marginTop: -30 },
   titulo: { fontSize: 42, fontWeight: "bold", color: "#fff", textAlign: "center", marginTop: -28, marginBottom: 44 },
   descricao: { color: "#fff", fontSize: 17, textAlign: "center", marginBottom: 48, lineHeight: 24 },
   campoComIcone: {
