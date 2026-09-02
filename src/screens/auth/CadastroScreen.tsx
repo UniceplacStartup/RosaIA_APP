@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -66,7 +66,7 @@ function CampoComIcone({
   );
 }
 
-export default function CadastroScreen({ navigation }: any) {
+export default function CadastroScreen({ navigation, route}: any) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -75,6 +75,12 @@ export default function CadastroScreen({ navigation }: any) {
   const [carregando, setCarregando] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.termosAceitos) {
+      setAceitouTermos(true);
+    }
+  }, [route?.params?.termosAceitos]);
 
   function emailValido(valor: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor);
@@ -187,8 +193,15 @@ export default function CadastroScreen({ navigation }: any) {
             {aceitouTermos && <Ionicons name="checkmark" size={14} color={CorDestaque} />}
           </View>
           <Text style={styles.textoTermos}>
-            Eu li e concordo com os <Text style={styles.linkDestacado}>Termos de Uso</Text> e a{" "}
-            <Text style={styles.linkDestacado}>Política de Privacidade</Text>.
+            Eu li e concordo com os{" "}
+            <Text style={styles.linkDestacado} onPress={() => navigation?.navigate("TermosDeUso")}>
+              Termos de Uso
+            </Text>{" "}
+            e a{" "}
+            <Text style={styles.linkDestacado} onPress={() => navigation?.navigate("TermosDeUso")}>
+              Política de Privacidade
+            </Text>
+            .
           </Text>
         </TouchableOpacity>
 
