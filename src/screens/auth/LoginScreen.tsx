@@ -97,7 +97,7 @@ export default function LoginScreen({ navigation }: any) {
     setCarregando(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), senha);
-      navigation.replace("Perfil");
+      //navigation.replace("Chat");
     } catch (erro: any) {
       Alert.alert("Erro", mensagemDeErro(erro.code));
     } finally {
