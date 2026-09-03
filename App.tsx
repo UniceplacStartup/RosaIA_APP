@@ -8,6 +8,7 @@ import LoginScreen from "./src/screens/auth/LoginScreen";
 import RecuperarSenhaScreen from "./src/screens/auth/RecuperarSenhaScreen";
 import TermosDeUsoScreen from "./src/screens/auth/TermosDeUsoScreen";
 import PerfilScreen from "./src/screens/auth/PerfilScreen";
+import ExcluirContaScreen from "./src/screens/auth/ExcluirContaScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,17 +19,14 @@ export default function App() {
         initialRouteName="Cadastro"
         screenOptions={{ headerShown: false }}
       >
-        {/* Suas telas (auth) */}
         <Stack.Screen name="Cadastro" component={CadastroScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="RecuperarSenha" component={RecuperarSenhaScreen} />
         <Stack.Screen name="TermosDeUso" component={TermosDeUsoScreen} />
         <Stack.Screen name="Perfil" component={PerfilScreen} />
-        <Stack.Screen name="ExcluirConta">
-          {() => <PlaceholderScreen nome="Excluir Conta" />}
-        </Stack.Screen>
+        <Stack.Screen name="ExcluirConta" component={ExcluirContaScreen} />
 
-        {/* Telas da Isadora (main) */}
+        {/* Telas da Isadora */}
         <Stack.Screen name="Splash">
           {() => <PlaceholderScreen nome="Splash" />}
         </Stack.Screen>
