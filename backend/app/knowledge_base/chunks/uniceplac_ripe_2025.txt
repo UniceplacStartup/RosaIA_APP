@@ -1,0 +1,10 @@
+TÍTULO: Desenvolvimento e Avaliação de Assistente Conversacional para Apoio Psicoeducativo em Saúde Mamária
+AUTORES: Sales et al. (Grupo de Pesquisa em IA Aplicada à Saúde - UNICEPLAC e Universidade de Brasília / RIPE UnB 2025)
+INSTITUIÇÃO: Centro Universitário UNICEPLAC / UnB
+CATEGORIA: Acolhimento Psicoeducativo
+
+CONTEÚDO CIENTÍFICO:
+A jornada de enfrentamento aos riscos e ao diagnóstico de alterações mamárias desperta sentimentos agudos de angústia, solidão, medo da mutilação cirúrgica e da finitude. O acolhimento precoce por ferramentas computacionais éticas demonstrou reduzir de forma significativa os escores de ansiedade situacional (STAI-S). 
+No protocolo UNICEPLAC de apoio humanizado, a interação empática é estruturada em três pilares fundamentais: escuta ativa sem julgamentos, validação dos sentimentos expressos pela paciente e oferta de dados epidemiológicos transparentes que desmistificam o nódulo mamário como sentença de fatalidade.
+Cerca de 80% das lesões sólidas ou císticas identificadas clinicamente ou por ultrassonografia possuem natureza histopatológica estritamente benigna, destacando-se fibroadenomas, alterações fibrocísticas e lipomas. 
+A linguagem do agente inteligente deve priorizar termos afetivos e acolhedores, desconstruindo o jargão biomédico que frequentemente aliena a usuária e reforça estigmas paralisantes. A tecnologia opera como uma ponte educativa entre a dúvida aflitiva e o consultório médico presencial, jamais como substituto da autoridade do profissional de saúde.

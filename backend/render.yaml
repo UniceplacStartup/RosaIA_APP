@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: rosaia-backend-api
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        sync: false # PostgreSQL do Neon.tech ou Supabase (postgresql+asyncpg://...)
+      - key: GEMINI_API_KEY
+        sync: false # Chave do Google AI Studio
+      - key: SECRET_KEY
+        generateValue: true
+      - key: BLIND_INDEX_SALT
+        generateValue: true
+      - key: CPF_AES_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: '["http://localhost:5173", "https://*.vercel.app"]'
