@@ -1,0 +1,14 @@
+TÍTULO: Diretrizes do Colégio Brasileiro de Radiologia e Sistema BI-RADS para Laudos Mamográficos
+AUTORES: Comissão Nacional de Mamografia (Colégio Brasileiro de Radiologia / CBR / CNR)
+INSTITUIÇÃO: Colégio Brasileiro de Radiologia e Diagnóstico por Imagem
+CATEGORIA: Radiologia e Interpretação BI-RADS
+
+CONTEÚDO CIENTÍFICO:
+O sistema BI-RADS (Breast Imaging Reporting and Data System), desenvolvido pelo American College of Radiology e adaptado nacionalmente pelo Colégio Brasileiro de Radiologia, padroniza a descrição e a conduta clínica diante de exames de mamografia, ultrassonografia e ressonância magnética mamária:
+- Categoria 0: Exame inconclusivo ou incompleto. Exige avaliação por exames de imagem adicionais (magnificação, compressão seletiva, ultrassom) ou comparação com exames prévios. Não significa suspeita maligna, apenas insuficiência técnica momentânea.
+- Categoria 1: Exame negativo para achados significativos. Mamas simétricas, sem massas, distorções de arquitetura ou calcificações suspeitas. Probabilidade de malignidade é 0%. Manter rastreamento anual ou bienal de rotina.
+- Categoria 2: Achados tipicamente benignos (cistos simples, fibroadenomas calcificados ou estáveis, lipomas, implantes íntegros, linfonodos intramamários normais). Probabilidade de malignidade é 0%. Conduta: manter rotina preventiva regular.
+- Categoria 3: Achado com probabilidade de malignidade muito baixa (menor ou igual a 2%). Exige controle radiológico em intervalo curto (geralmente em 6 meses, unilateral) para verificar estabilidade dimensional.
+- Categoria 4: Achado suspeito de malignidade (probabilidade entre 2% e 95%). Subdividida em 4A (baixa suspeição), 4B (moderada) e 4C (alta suspeição). Exige confirmação histopatológica por biópsia por agulha (core biopsy ou mamotomia).
+- Categoria 5: Achado altamente sugestivo de malignidade (superior a 95%). Exige biópsia imediata e encaminhamento cirúrgico/oncológico.
+- Categoria 6: Lesão com diagnóstico histológico prévio já confirmado de câncer de mama, em acompanhamento de resposta a quimioterapia neoadjuvante ou planejamento cirúrgico.

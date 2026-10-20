@@ -1,0 +1,325 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import type {
+  AssistantReply,
+  ChatMessage,
+  EmotionMonitorState,
+  JumpRequest,
+  SampleDocumentKind,
+} from '../types/chat';
+import { INITIAL_MESSAGES } from '../data/seedData';
+import { SAMPLE_DOCUMENTS, SIMULATED_IMAGE_BLOCK } from '../data/sampleDocuments';
+import { askGemini, isGeminiKeyUsable } from '../services/geminiService';
+import { generateLocalDoutoraRosaResponse } from '../services/ragEngine';
+import { buildAnonymizedPreview } from '../utils/anonymizer';
+import { validateExamFile } from '../utils/examFileValidator';
+import { formatClockTime } from '../utils/format';
+import { safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
+import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
+
+const REPLY_DELAY_MS = 750;
+const OFFLINE_ERROR_TEXT = 'Não foi possível enviar sua mensagem. Verifique sua conexão e tente novamente.';
+
+let messageIdCounter = 0;
+function makeMessageId(prefix: 'u' | 'r'): string {
+  messageIdCounter += 1;
+  return `${prefix}_${Date.now()}_${messageIdCounter}`;
+}
+
+const DEFAULT_EMOTION_MONITOR: EmotionMonitorState = {
+  badgeLabel: 'Acolhimento Ativo',
+  tone: 'default',
+  explanation: 'default',
+};
+
+interface FailedMessage {
+  text: string;
+  docAttachment: string | null;
+}
+
+interface ChatContextValue {
+  messages: ChatMessage[];
+  isTyping: boolean;
+  emotionMonitor: EmotionMonitorState;
+  geminiApiKey: string;
+  isUsingGemini: boolean;
+  simulateOffline: boolean;
+  errorBannerText: string | null;
+  jumpRequest: JumpRequest | null;
+  sendMessage: (text: string, docAttachment?: string | null) => Promise<void>;
+  retryLastMessage: () => void;
+  toggleOfflineSimulation: () => void;
+  uploadExamFile: (file: File) => Promise<void>;
+  simulateSampleDocument: (kind: SampleDocumentKind) => void;
+  appendAssistantMessage: (emotionTag: string, text: string) => void;
+  jumpToDate: (dateGroup: string) => void;
+  saveGeminiKey: (key: string) => void;
+  clearGeminiKey: () => void;
+}
+
+const ChatContext = createContext<ChatContextValue | undefined>(undefined);
+
+function isMessageList(value: unknown): value is ChatMessage[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => {
+      if (typeof item !== 'object' || item === null) return false;
+      const m = item as Record<string, unknown>;
+      return (
+        typeof m.id === 'string' &&
+        typeof m.dateGroup === 'string' &&
+        typeof m.time === 'string' &&
+        typeof m.text === 'string' &&
+        (m.sender === 'user' || m.sender === 'doutora_rosa')
+      );
+    })
+  );
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const { showToast } = useToast();
+  const { accountResetToken } = useAuth();
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    safeGetStorage<ChatMessage[]>(STORAGE_KEYS.messages, [...INITIAL_MESSAGES], isMessageList),
+  );
+  const [isTyping, setIsTyping] = useState(false);
+  const [emotionMonitor, setEmotionMonitor] = useState<EmotionMonitorState>(DEFAULT_EMOTION_MONITOR);
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => safeGetStorage(STORAGE_KEYS.geminiKey, '', isString));
+  const [simulateOffline, setSimulateOffline] = useState(false);
+  const [errorBannerText, setErrorBannerText] = useState<string | null>(null);
+  const [jumpRequest, setJumpRequest] = useState<JumpRequest | null>(null);
+
+  // Refs espelham o estado para que callbacks assíncronos sempre leiam o valor mais recente.
+  const messagesRef = useRef(messages);
+  const geminiKeyRef = useRef(geminiApiKey);
+  const offlineRef = useRef(simulateOffline);
+  const lastFailedRef = useRef<FailedMessage | null>(null);
+
+  const commitMessages = useCallback((next: ChatMessage[], persist = true) => {
+    messagesRef.current = next;
+    setMessages(next);
+    if (persist) safeSetStorage(STORAGE_KEYS.messages, next);
+  }, []);
+
+  const setOffline = useCallback((value: boolean) => {
+    offlineRef.current = value;
+    setSimulateOffline(value);
+  }, []);
+
+  const pushMessage = useCallback(
+    (message: ChatMessage) => commitMessages([...messagesRef.current, message]),
+    [commitMessages],
+  );
+
+  // Exclusão de conta (LGPD): restaura estado inicial sem regravar o storage.
+  const lastResetToken = useRef(accountResetToken);
+  useEffect(() => {
+    if (lastResetToken.current === accountResetToken) return;
+    lastResetToken.current = accountResetToken;
+    commitMessages([...INITIAL_MESSAGES], false);
+    geminiKeyRef.current = '';
+    setGeminiApiKey('');
+    setOffline(false);
+    setErrorBannerText(null);
+    setIsTyping(false);
+    setEmotionMonitor(DEFAULT_EMOTION_MONITOR);
+    lastFailedRef.current = null;
+  }, [accountResetToken, commitMessages, setOffline]);
+
+  const sendMessage = useCallback(
+    async (text: string, docAttachment: string | null = null): Promise<void> => {
+      if (!text.trim()) return;
+
+      // RF09: simulação de erro de rede / offline
+      if (offlineRef.current) {
+        lastFailedRef.current = { text, docAttachment };
+        setErrorBannerText(OFFLINE_ERROR_TEXT);
+        showToast('Estado de Erro (RF09)', 'Simulação de falha de envio ativada. Clique em "Tentar novamente" no banner.', 'error');
+        return;
+      }
+
+      setErrorBannerText(null);
+      pushMessage({
+        id: makeMessageId('u'),
+        dateGroup: 'Hoje',
+        time: formatClockTime(),
+        sender: 'user',
+        text,
+        docAttachment,
+      });
+      setIsTyping(true);
+
+      // Gemini (opcional) com contingência para o motor RAG local
+      let reply: AssistantReply | null = null;
+      if (isGeminiKeyUsable(geminiKeyRef.current)) {
+        reply = await askGemini(geminiKeyRef.current, text);
+      }
+
+      await new Promise<void>((resolve) => window.setTimeout(resolve, REPLY_DELAY_MS));
+
+      if (!reply) {
+        reply = generateLocalDoutoraRosaResponse(text);
+        const update = reply.monitorUpdate;
+        if (update) setEmotionMonitor((prev) => ({ ...prev, ...update }));
+      }
+
+      setIsTyping(false);
+      pushMessage({
+        id: makeMessageId('r'),
+        dateGroup: 'Hoje',
+        time: formatClockTime(),
+        sender: 'doutora_rosa',
+        emotionTag: reply.emotionTag,
+        text: reply.text,
+      });
+    },
+    [pushMessage, showToast],
+  );
+
+  const retryLastMessage = useCallback(() => {
+    setOffline(false);
+    setErrorBannerText(null);
+    const failed = lastFailedRef.current;
+    if (failed) {
+      lastFailedRef.current = null;
+      void sendMessage(failed.text, failed.docAttachment);
+    }
+  }, [sendMessage, setOffline]);
+
+  const toggleOfflineSimulation = useCallback(() => {
+    const next = !offlineRef.current;
+    setOffline(next);
+    showToast(
+      next ? 'Modo Sem Conexão Ativado (RF09)' : 'Conexão Restaurada',
+      next ? 'Envie uma mensagem para testar o estado de erro exigido no RF09.' : 'O envio de mensagens voltou ao normal.',
+      next ? 'warning' : 'success',
+    );
+  }, [setOffline, showToast]);
+
+  const uploadExamFile = useCallback(
+    async (file: File): Promise<void> => {
+      const validation = await validateExamFile(file);
+
+      if (!validation.ok) {
+        if (validation.reason === 'image_blocked') {
+          showToast(
+            '🚫 Bloqueio Estrito LGPD: Imagem Proibida!',
+            `O arquivo "${file.name}" foi bloqueado. Por conformidade com a LGPD, fotos e imagens médicas são estritamente proibidas. Envie apenas laudos em texto/PDF (.pdf, .txt, .docx).`,
+            'error',
+          );
+        } else {
+          showToast(
+            'Formato Não Permitido',
+            `O arquivo "${file.name}" não é um laudo textual aceito. Envie apenas documentos .pdf, .txt, .doc ou .docx.`,
+            'error',
+          );
+        }
+        return;
+      }
+
+      let rawContent = '';
+      try {
+        rawContent = await file.text();
+      } catch {
+        rawContent = '';
+      }
+      const preview = buildAnonymizedPreview(rawContent);
+      showToast('📄 Documento Anonimizado (LGPD)', 'CPF e dados pessoais removidos antes da leitura pela IA.', 'success');
+      await sendMessage(
+        `Doutora Rosa, enviei meu documento de exame (${file.name}). Trecho anonimizado: "${preview || 'Laudo anexado para leitura educativa'}". Pode me explicar os termos com calma?`,
+        file.name,
+      );
+    },
+    [sendMessage, showToast],
+  );
+
+  const simulateSampleDocument = useCallback(
+    (kind: SampleDocumentKind) => {
+      if (kind === 'image_blocked') {
+        showToast(SIMULATED_IMAGE_BLOCK.toastTitle, SIMULATED_IMAGE_BLOCK.toastMessage, 'error');
+        return;
+      }
+      const scenario = SAMPLE_DOCUMENTS[kind];
+      showToast(scenario.toastTitle, scenario.toastMessage, 'success');
+      void sendMessage(scenario.userMessage, scenario.fileName);
+    },
+    [sendMessage, showToast],
+  );
+
+  const appendAssistantMessage = useCallback(
+    (emotionTag: string, text: string) => {
+      pushMessage({
+        id: makeMessageId('r'),
+        dateGroup: 'Hoje',
+        time: formatClockTime(),
+        sender: 'doutora_rosa',
+        emotionTag,
+        text,
+      });
+    },
+    [pushMessage],
+  );
+
+  const jumpToDate = useCallback((dateGroup: string) => {
+    setJumpRequest({ dateGroup, nonce: Date.now() });
+  }, []);
+
+  const saveGeminiKey = useCallback(
+    (key: string) => {
+      const clean = key.trim();
+      geminiKeyRef.current = clean;
+      setGeminiApiKey(clean);
+      safeSetStorage(STORAGE_KEYS.geminiKey, clean);
+      showToast('Configuração de IA Salva', clean ? 'Chave Gemini API configurada!' : 'Usando o motor RAG integrado.', 'success');
+    },
+    [showToast],
+  );
+
+  const clearGeminiKey = useCallback(() => {
+    geminiKeyRef.current = '';
+    setGeminiApiKey('');
+    safeSetStorage(STORAGE_KEYS.geminiKey, '');
+    showToast('Motor Integrado Ativo', 'Usando respostas clínicas e empáticas locais.', 'info');
+  }, [showToast]);
+
+  const value = useMemo<ChatContextValue>(
+    () => ({
+      messages,
+      isTyping,
+      emotionMonitor,
+      geminiApiKey,
+      isUsingGemini: geminiApiKey.length > 0,
+      simulateOffline,
+      errorBannerText,
+      jumpRequest,
+      sendMessage,
+      retryLastMessage,
+      toggleOfflineSimulation,
+      uploadExamFile,
+      simulateSampleDocument,
+      appendAssistantMessage,
+      jumpToDate,
+      saveGeminiKey,
+      clearGeminiKey,
+    }),
+    [
+      messages, isTyping, emotionMonitor, geminiApiKey, simulateOffline, errorBannerText, jumpRequest,
+      sendMessage, retryLastMessage, toggleOfflineSimulation, uploadExamFile, simulateSampleDocument,
+      appendAssistantMessage, jumpToDate, saveGeminiKey, clearGeminiKey,
+    ],
+  );
+
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+}
+
+export function useChat(): ChatContextValue {
+  const ctx = useContext(ChatContext);
+  if (!ctx) throw new Error('useChat deve ser usado dentro de <ChatProvider>');
+  return ctx;
+}

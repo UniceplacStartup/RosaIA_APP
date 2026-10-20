@@ -1,0 +1,9 @@
+TÍTULO: Ética, Privacidade e Proteção de Dados Sensíveis na Construção de Sistemas Especialistas em Saúde da Mulher
+AUTORES: Souto et al. (Revista de Ciências da Saúde da Amazônia - RCSA UNICEPLAC, 2025)
+INSTITUIÇÃO: Centro Universitário UNICEPLAC
+CATEGORIA: Ética e LGPD em Saúde
+
+CONTEÚDO CIENTÍFICO:
+A conformidade com a Lei Geral de Proteção de Dados Pessoais (LGPD - Lei nº 13.709/2018) impõe diretrizes rigorosas quando do manuseio de dados de saúde (Artigo 11), considerados juridicamente como dados pessoais sensíveis. Em ecossistemas conversacionais e aplicativos de teleorientação feminina, o armazenamento desprotegido de imagens corporais íntimas representa grave violação da dignidade e da integridade psíquica da paciente.
+A proibição categórica da ingestão de fotografias e imagens clínicas diretas no frontend e no backend do RosaIA fundamenta-se no princípio da necessidade e da minimização de dados (Art. 6º, III da LGPD). O sistema opta deliberadamente por processar exclusivamente laudos médicos estruturados em formato de texto e PDF, após rigorosa desidentificação prévia (Scrubbing de PII).
+O uso de Blind Indexes baseados em HMAC-SHA256 permite a indexação e autenticação unívoca de cadastros por CPF sem revelar o identificador civil em texto claro aos operadores do banco de dados, enquanto a criptografia simétrica autenticada AES-256-GCM salvaguarda os dados em repouso. O consentimento informado deve ser granular, revogável a qualquer momento e acompanhado do pleno direito à exclusão definitiva dos registros (Art. 18, VI).

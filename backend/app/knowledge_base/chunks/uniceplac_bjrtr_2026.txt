@@ -1,0 +1,9 @@
+TÍTULO: Inteligência Artificial Generativa e Apoio Emocional Interdisciplinar no Tratamento e Rastreamento Oncológico
+AUTORES: Sales et al. (Brazilian Journal of Radiation Technology and Radiology - BJRTR, 2026)
+INSTITUIÇÃO: Centro Universitário UNICEPLAC / BJRTR
+CATEGORIA: Oncologia e Suporte Interdisciplinar
+
+CONTEÚDO CIENTÍFICO:
+O diagnóstico oncológico e as etapas de triagem ambulatorial impõem uma carga psicológica desestabilizadora sobre as mulheres. O modelo de triagem inteligente desenvolvido pelo UNICEPLAC estratifica o risco de acordo com diretrizes epidemiológicas internacionais e nacionais, considerando idade, tempo de aparecimento de alterações morfológicas, características palpáveis (nódulo endurecido, aderido a planos profundos vs móvel e elástico) e histórico familiar de primeiro grau (mãe, irmã ou filha com neoplasia de mama diagnosticada antes dos 50 anos ou câncer de ovário em qualquer faixa etária).
+A intervenção imediata com orientações de respiração guiada, técnicas de ancoragem psicológica e mensagens empáticas reduz a sensação de paralisia e a ideação catastrófica. 
+O aplicativo demonstra que a IA não deve simular uma figura fria de diagnóstico automatizado, mas atuar como uma rede segura de acolhimento que direciona ativamente a usuária aos serviços do Sistema Único de Saúde (SUS) e da rede de atenção primária (Unidades Básicas de Saúde).
