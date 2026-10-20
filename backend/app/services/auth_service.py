@@ -50,13 +50,19 @@ async def register_user(
     stmt_email = select(User).where(User.email == payload.email.lower().strip())
     existing_email = (await db.execute(stmt_email)).scalar_one_or_none()
     if existing_email:
-        raise RosaIABaseException(message="Já existe uma conta cadastrada com este e-mail.")
+        raise RosaIABaseException(
+            status_code=409,
+            detail="Já existe uma conta cadastrada com este e-mail."
+        )
 
     # 2. Verifica duplicidade de CPF via Blind Index
     stmt_cpf = select(User).where(User.cpf_hash == cpf_h)
     existing_cpf = (await db.execute(stmt_cpf)).scalar_one_or_none()
     if existing_cpf:
-        raise RosaIABaseException(message="Já existe uma conta cadastrada com este CPF.")
+        raise RosaIABaseException(
+            status_code=409,
+            detail="Já existe uma conta cadastrada com este CPF."
+        )
 
     # 3. Cria a usuária
     user = User(
@@ -166,7 +172,6 @@ async def authenticate_user(
     if not verify_password(payload.password, user.password_hash):
         user.failed_login_attempts += 1
         if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
-            user.is_locked = True
             user.locked_until = now + timedelta(minutes=settings.ACCOUNT_LOCKOUT_MINUTES)
             log_security_event("ACCOUNT_LOCKED_BRUTE_FORCE", ip_h, {"user_id": str(user.id)})
 
@@ -175,7 +180,6 @@ async def authenticate_user(
 
     # Sucesso: limpa tentativas e atualiza data de login
     user.failed_login_attempts = 0
-    user.is_locked = False
     user.locked_until = None
     user.last_login_at = now
     await db.commit()
@@ -195,3 +199,25 @@ async def authenticate_user(
             "role": user.role,
         }
     )
+
+
+async def check_cpf_exists(db: AsyncSession, cpf: str) -> bool:
+    """Verifica de forma segura (Blind Index LGPD) se o CPF já está cadastrado."""
+    clean_cpf = clean_cpf_digits(cpf)
+    if len(clean_cpf) != 11:
+        return False
+    cpf_h = compute_cpf_blind_index(clean_cpf)
+    stmt = select(User.id).where(User.cpf_hash == cpf_h)
+    existing = (await db.execute(stmt)).first()
+    return existing is not None
+
+
+async def check_email_exists(db: AsyncSession, email: str) -> bool:
+    """Verifica se o e-mail já está cadastrado na base."""
+    clean_email = email.lower().strip()
+    if not clean_email or "@" not in clean_email:
+        return False
+    stmt = select(User.id).where(User.email == clean_email)
+    existing = (await db.execute(stmt)).first()
+    return existing is not None
+

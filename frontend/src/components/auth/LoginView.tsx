@@ -42,13 +42,13 @@ export default function LoginView() {
       <form id="formLogin" className="space-y-3.5" noValidate onSubmit={handleSubmit}>
         <div>
           <label htmlFor="loginEmail" className={AUTH_LABEL_CLASS}>
-            E-mail <span className="text-red-600">*</span>
+            E-mail ou CPF <span className="text-red-600">*</span>
           </label>
           <input
             id="loginEmail"
-            type="email"
+            type="text"
             autoComplete="username"
-            placeholder="maria.silva@exemplo.com"
+            placeholder="seu.email@exemplo.com ou 000.000.000-00"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className={AUTH_INPUT_LARGE_CLASS}

@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { CpfCryptoPreviewData, PasswordRequirements, RegisterFormValues } from '../types/auth';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { api } from '../services/api';
 import { formatCpfMask, generateValidTestCpf, isValidCpf, onlyDigits } from '../utils/cpfValidator';
 import { maskCpfLgpd, simulateBlindIndex } from '../utils/cryptoSimulation';
 import { validateRegistration } from '../utils/formValidators';
@@ -42,11 +43,52 @@ export function useRegisterForm(): RegisterFormController {
   const { showToast } = useToast();
   const [values, setValues] = useState<RegisterFormValues>(INITIAL_VALUES);
   const [showPasswords, setShowPasswords] = useState(false);
+  const [cpfStatus, setCpfStatus] = useState<{
+    checkedDigits: string;
+    isRegistered: boolean | null;
+    isChecking: boolean;
+  }>({
+    checkedDigits: '',
+    isRegistered: null,
+    isChecking: false,
+  });
 
   const requirements = useMemo(
     () => evaluatePassword(values.password, values.confirmPassword),
     [values.password, values.confirmPassword],
   );
+
+  useEffect(() => {
+    const digits = onlyDigits(values.cpf);
+    if (digits.length !== 11 || !isValidCpf(values.cpf)) {
+      setCpfStatus({ checkedDigits: '', isRegistered: null, isChecking: false });
+      return;
+    }
+
+    let isMounted = true;
+    setCpfStatus((prev) => ({ ...prev, checkedDigits: digits, isChecking: true }));
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.auth.checkCpf(digits);
+        if (isMounted) {
+          setCpfStatus({ checkedDigits: digits, isRegistered: res.exists, isChecking: false });
+          if (res.exists) {
+            showToast('CPF Já Cadastrado', 'Já existe uma conta com este CPF. Acesse a tela de login.', 'warning');
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setCpfStatus({ checkedDigits: digits, isRegistered: null, isChecking: false });
+        }
+      }
+    }, 350);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [values.cpf, showToast]);
 
   const cpfPreview = useMemo<CpfCryptoPreviewData | null>(() => {
     const digits = onlyDigits(values.cpf);
@@ -55,8 +97,10 @@ export function useRegisterForm(): RegisterFormController {
       isValid: isValidCpf(values.cpf),
       blindIndex: simulateBlindIndex(digits),
       masked: maskCpfLgpd(digits),
+      isRegistered: cpfStatus.checkedDigits === digits ? cpfStatus.isRegistered : null,
+      isChecking: cpfStatus.checkedDigits === digits ? cpfStatus.isChecking : false,
     };
-  }, [values.cpf]);
+  }, [values.cpf, cpfStatus]);
 
   const setField = useCallback<RegisterFormController['setField']>((field, value) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -78,7 +122,7 @@ export function useRegisterForm(): RegisterFormController {
   }, []);
 
   const submit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
+    async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const result = validateRegistration(values);
       if (!result.ok) {
@@ -86,11 +130,24 @@ export function useRegisterForm(): RegisterFormController {
         showToast(title, message, type);
         return;
       }
-      register({ fullName: result.fullName, email: result.email, cpf: result.cpf });
-      setValues(INITIAL_VALUES);
-      setShowPasswords(false);
+      if (cpfStatus.isRegistered === true) {
+        showToast('CPF Já Cadastrado', 'Este CPF já está cadastrado no sistema. Acesse a tela de login.', 'error');
+        return;
+      }
+      const success = await register({
+        fullName: result.fullName,
+        email: result.email,
+        cpf: result.cpf,
+        password: values.password,
+        confirmPassword: values.confirmPassword,
+        acceptedTerms: values.acceptedTerms,
+      });
+      if (success) {
+        setValues(INITIAL_VALUES);
+        setShowPasswords(false);
+      }
     },
-    [register, showToast, values],
+    [register, showToast, values, cpfStatus.isRegistered],
   );
 
   return {
@@ -98,7 +155,7 @@ export function useRegisterForm(): RegisterFormController {
     showPasswords,
     requirements,
     cpfPreview,
-    canSubmit: values.acceptedTerms,
+    canSubmit: values.acceptedTerms && cpfStatus.isRegistered !== true && !cpfStatus.isChecking,
     setField,
     setCpf,
     generateTestCpf,

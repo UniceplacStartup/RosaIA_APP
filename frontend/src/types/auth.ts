@@ -47,4 +47,6 @@ export interface CpfCryptoPreviewData {
   isValid: boolean;
   blindIndex: string;
   masked: string;
+  isRegistered?: boolean | null;
+  isChecking?: boolean;
 }
