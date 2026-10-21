@@ -3,9 +3,8 @@ import { useUi } from '../../context/UiContext';
 import type { AppTab } from '../../types/ui';
 
 const TABS: ReadonlyArray<{ id: AppTab; label: string }> = [
-  { id: 'chat', label: '💬 Chat (WhatsApp)' },
+  { id: 'chat', label: '💬 Chat com a Dra. Rosa' },
   { id: 'triagem', label: '🩺 Triagem & Lembretes' },
-  { id: 'arquitetura', label: '🗄️ Banco SQL & 10 Dias' },
   { id: 'sobre', label: '📚 Artigos & Sobre' },
   { id: 'perfil', label: '👤 Meu Perfil' },
 ];

@@ -67,7 +67,7 @@ export default function ProfileSection() {
             onClick={() => openModal('logout')}
             className="py-2.5 px-4 rounded-full bg-white hover:bg-gray-100 text-rosa-800 border border-rosa-800 font-bold text-xs transition"
           >
-            🚪 Sair da Conta (Logout RF12)
+            🚪 Sair da Conta
           </button>
         </div>
 
@@ -78,7 +78,7 @@ export default function ProfileSection() {
             onClick={() => openModal('deleteAccount')}
             className="w-full py-2.5 px-4 rounded-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 font-bold text-xs transition"
           >
-            🗑️ Solicitar Exclusão Permanente da Minha Conta e Dados (RF13 / LGPD)
+            🗑️ Excluir Minha Conta e Dados Pessoais
           </button>
         </div>
       </div>

@@ -50,7 +50,13 @@ def _is_retryable(exc: BaseException) -> bool:
 
 
 def _is_model_unavailable(exc: BaseException) -> bool:
-    return _status_code(exc) in (400, 403, 404) and isinstance(exc, genai_errors.APIError)
+    if _status_code(exc) in (400, 403, 404) and isinstance(exc, genai_errors.APIError):
+        return True
+    s = str(exc).lower()
+    # Se for cota diária esgotada (ex: retry em 14h), pula imediatamente para outro modelo
+    if "perday" in s or "daily quota" in s or ("retry in" in s and ("h" in s or "m" in s)):
+        return True
+    return False
 
 
 async def generate(
@@ -86,8 +92,14 @@ async def generate(
     config = types.GenerateContentConfig(**config_kwargs)
 
     models = [settings.GEMINI_MODEL]
-    if settings.GEMINI_FALLBACK_MODEL and settings.GEMINI_FALLBACK_MODEL != settings.GEMINI_MODEL:
-        models.append(settings.GEMINI_FALLBACK_MODEL)
+    if settings.GEMINI_FALLBACK_MODEL:
+        for fb in settings.GEMINI_FALLBACK_MODEL.split(","):
+            clean_fb = fb.strip()
+            if clean_fb and clean_fb not in models:
+                models.append(clean_fb)
+    for safety_net in ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3-flash-preview"]:
+        if safety_net not in models:
+            models.append(safety_net)
 
     attempts = 0
     last_error: Optional[BaseException] = None

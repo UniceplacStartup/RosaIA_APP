@@ -8,7 +8,7 @@ export default function RemindersSection() {
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-rosa-200 shadow-sm space-y-4">
-      <h2 className="text-lg font-extrabold text-rosa-800">⏰ Meus Lembretes de Cuidado (RF11)</h2>
+      <h2 className="text-lg font-extrabold text-rosa-800">⏰ Meus Lembretes de Cuidado</h2>
       <p className="text-xs text-gray-600">Agende lembretes de mamografia, ultrassom, consultas médicas ou medicações.</p>
 
       <ReminderForm />

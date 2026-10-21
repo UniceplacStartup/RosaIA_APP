@@ -128,7 +128,7 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
           });
       }
 
-      showToast('Lembrete Criado (RF11)', 'Notificação programada com sucesso.', 'success');
+      showToast('Lembrete Criado', 'Notificação programada com sucesso.', 'success');
       return true;
     },
     [commit, showToast],
@@ -155,7 +155,7 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
       if (token && !id.startsWith('rem_')) {
         api.reminders.delete(id).catch(() => {});
       }
-      showToast('Lembrete Removido (RF11)', 'O lembrete foi excluído da sua lista.', 'info');
+      showToast('Lembrete Removido', 'O lembrete foi excluído da sua lista.', 'info');
     },
     [commit, showToast],
   );

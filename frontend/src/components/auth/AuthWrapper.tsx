@@ -35,7 +35,7 @@ export default function AuthWrapper() {
   const handleAcceptTerms = () => {
     registerForm.setAcceptedTerms(true);
     setIsTermsOpen(false);
-    showToast('Termos Aceitos (RF06)', 'Você concordou com os Termos de Uso e Política LGPD.', 'success');
+    showToast('Termos Aceitos', 'Você concordou com os Termos de Uso e Política de Privacidade.', 'success');
   };
 
   return (

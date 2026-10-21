@@ -16,7 +16,7 @@ export default function TermsModal({ onClose, onAccept }: TermsModalProps) {
     >
       <div className="flex items-center justify-between border-b border-rosa-100 pb-3">
         <h3 id="termsModalTitle" className="text-lg font-extrabold text-rosa-800">
-          Termos de Uso &amp; Aviso Médico (RF06 / LGPD)
+          Termos de Uso &amp; Aviso Médico
         </h3>
         <button
           id="btnCloseTermosModal"

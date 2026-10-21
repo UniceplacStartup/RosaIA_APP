@@ -23,7 +23,7 @@ export default function DeleteAccountModal({ onClose }: DeleteAccountModalProps)
       panelClassName="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-red-200 space-y-4"
     >
       <h3 id="deleteModalTitle" className="text-base font-extrabold text-red-700">
-        ⚠️ Excluir Conta Permanentemente (RF13)
+        ⚠️ Excluir Conta Permanentemente
       </h3>
       <p className="text-xs text-gray-700 leading-relaxed">
         Esta ação poderá excluir permanentemente sua conta e seus dados, incluindo o histórico de conversas, conforme o
