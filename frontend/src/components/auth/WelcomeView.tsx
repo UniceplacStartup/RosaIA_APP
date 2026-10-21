@@ -21,7 +21,7 @@ export default function WelcomeView() {
       <div className="bg-white rounded-2xl p-4 border border-rosa-200 shadow-sm space-y-2 text-xs text-gray-700">
         <div className="font-bold text-rosa-800 flex items-center gap-1.5">
           <InfoCircleIcon className="w-4 h-4 text-rosa-600" />
-          Importante antes de começar (RF02 / RF05):
+          Importante antes de começar:
         </div>
         <ul className="list-disc list-inside space-y-1 text-gray-600">
           <li>

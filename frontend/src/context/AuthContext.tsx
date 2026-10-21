@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Silencioso ou contingência
       }
 
-      showToast('Solicitação Processada (RF05)', 'Se o e-mail estiver cadastrado, enviaremos o link de redefinição.', 'success');
+      showToast('Solicitação Processada', 'Se o e-mail estiver cadastrado, enviaremos o link de redefinição.', 'success');
       return true;
     },
     [showToast],
@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.auth.logout();
     setIsAuthenticated(false);
     setAuthView('login');
-    showToast('Sessão Encerrada (RF12)', 'Você saiu da sua conta com segurança.', 'info');
+    showToast('Sessão Encerrada', 'Você saiu da sua conta com segurança.', 'info');
   }, [showToast]);
 
   const deleteAccount = useCallback(

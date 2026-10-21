@@ -206,11 +206,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     async (text: string, docAttachment: string | null = null): Promise<void> => {
       if (!text.trim()) return;
 
-      // RF09: simulação de erro de rede / offline
+      // Simulação de erro de rede / offline
       if (offlineRef.current) {
         lastFailedRef.current = { text, docAttachment };
         setErrorBannerText(OFFLINE_ERROR_TEXT);
-        showToast('Estado de Erro (RF09)', 'Simulação de falha de envio ativada. Clique em "Tentar novamente" no banner.', 'error');
+        showToast('Falha no Envio', 'Não foi possível enviar a mensagem. Verifique sua conexão e tente novamente.', 'error');
         return;
       }
 
@@ -330,8 +330,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const next = !offlineRef.current;
     setOffline(next);
     showToast(
-      next ? 'Modo Sem Conexão Ativado (RF09)' : 'Conexão Restaurada',
-      next ? 'Envie uma mensagem para testar o estado de erro exigido no RF09.' : 'O envio de mensagens voltou ao normal.',
+      next ? 'Modo Sem Conexão Ativado' : 'Conexão Restaurada',
+      next ? 'Modo de teste sem conexão ativado.' : 'O envio de mensagens voltou ao normal.',
       next ? 'warning' : 'success',
     );
   }, [setOffline, showToast]);
@@ -343,8 +343,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (!validation.ok) {
         if (validation.reason === 'image_blocked') {
           showToast(
-            '🚫 Bloqueio Estrito LGPD: Imagem Proibida!',
-            `O arquivo "${file.name}" foi bloqueado. Por conformidade com a LGPD, fotos e imagens médicas são estritamente proibidas. Envie apenas laudos em texto/PDF (.pdf, .txt, .docx).`,
+            '🚫 Formato Não Permitido',
+            `O arquivo "${file.name}" não pôde ser recebido. Por proteção à sua privacidade, fotos e imagens de exames não são aceitas. Envie apenas laudos em documento (PDF, TXT ou DOC).`,
             'error',
           );
         } else {

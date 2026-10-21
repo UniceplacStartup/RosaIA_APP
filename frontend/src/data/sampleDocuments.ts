@@ -12,16 +12,16 @@ export interface SampleDocumentScenario {
 export const SAMPLE_DOCUMENTS: Record<Exclude<SampleDocumentKind, 'image_blocked'>, SampleDocumentScenario> = {
   birads2: {
     kind: 'birads2',
-    toastTitle: '📄 Laudo Anonimizado (LGPD)',
-    toastMessage: 'CPF [CPF_OCULTO_LGPD] anonimizado antes do envio para a Doutora Rosa.',
+    toastTitle: '📄 Laudo Preparado com Privacidade',
+    toastMessage: 'Dados pessoais anonimizados antes do envio para a Doutora Rosa.',
     userMessage:
       'Doutora Rosa, anexei meu laudo de Mamografia Digital: "Paciente: [ANONIMIZADO_LGPD], CPF: [CPF_OCULTO_LGPD]. Mamas simétricas, calcificações tipicamente benignas esparsas. Conclusão: Categoria BI-RADS 2." O que isso significa?',
     fileName: 'laudo_mamografia_birads2.pdf',
   },
   birads3: {
     kind: 'birads3',
-    toastTitle: '📄 Laudo Anonimizado (LGPD)',
-    toastMessage: 'Dados sensíveis filtrados pelo motor LGPD.',
+    toastTitle: '📄 Laudo Preparado com Privacidade',
+    toastMessage: 'Dados sensíveis filtrados e protegidos com segurança.',
     userMessage:
       'Doutora Rosa, anexei meu laudo de Ultrassonografia Mamária: "Nódulo ovalado, circunscrito, paralelo à pele no QSE da mama direita, medindo 0,8 cm. Conclusão: Achado provavelmente benigno — Categoria BI-RADS 3. Controle em 6 meses." Devo ficar preocupada?',
     fileName: 'laudo_ultrassom_birads3.pdf',
@@ -29,9 +29,9 @@ export const SAMPLE_DOCUMENTS: Record<Exclude<SampleDocumentKind, 'image_blocked
 };
 
 export const SIMULATED_IMAGE_BLOCK = {
-  toastTitle: '🚫 Bloqueio LGPD Ativado (mamografia_foto.jpg)',
+  toastTitle: '🚫 Formato de Arquivo Não Permitido',
   toastMessage:
-    'Upload rejeitado pelo validador MIME + Magic Bytes (HTTP 415). Imagens são estritamente proibidas no RosaIA APP por segurança LGPD.',
+    'Por proteção à sua privacidade, não recebemos fotos ou imagens de exames. Envie apenas o texto ou documento em PDF do laudo.',
 } as const;
 
 export const QUICK_PROMPTS: ReadonlyArray<{ label: string; message: string }> = [

@@ -16,7 +16,7 @@ const BADGE_TONE_CLASSES: Record<EmotionTone, string> = {
 /** Sidebar estilo WhatsApp: histórico por data, estado emocional (RF07) e upload de laudos. */
 export default function ChatSidebar() {
   const { user } = useAuth();
-  const { messages, emotionMonitor, simulateOffline, sendMessage, jumpToDate, toggleOfflineSimulation } = useChat();
+  const { messages, emotionMonitor, sendMessage, jumpToDate } = useChat();
 
   const lastMessage = messages[messages.length - 1];
   const lastTime = lastMessage ? (lastMessage.dateGroup === 'Hoje' ? lastMessage.time : lastMessage.dateGroup) : 'Agora';
@@ -71,10 +71,10 @@ export default function ChatSidebar() {
           </div>
         </div>
 
-        {/* Monitor de Apoio Psicológico (RF07 + Artigos RCSA/RIPE) */}
+        {/* Monitor de Apoio Psicológico */}
         <div className="bg-white rounded-2xl p-3.5 border border-rosa-200 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-rosa-800">💙 Monitor de Apoio Psicológico (RF07)</span>
+            <span className="text-xs font-bold text-rosa-800">💙 Monitor de Apoio Emocional</span>
             <span
               id="emotionBadge"
               className={`text-[11px] px-2 py-0.5 rounded-full ${BADGE_TONE_CLASSES[emotionMonitor.tone]}`}
@@ -119,15 +119,7 @@ export default function ChatSidebar() {
         <span>
           Usuária: <strong id="sidebarUserName" className="text-rosa-900">{user.fullName}</strong>
         </span>
-        <button
-          id="btnClearSimulatedConnectionError"
-          type="button"
-          aria-pressed={simulateOffline}
-          onClick={toggleOfflineSimulation}
-          className="text-rosa-700 hover:underline font-medium"
-        >
-          Simular Erro/Offline (RF09)
-        </button>
+        <span className="text-emerald-700 font-medium">● Conectada</span>
       </div>
     </aside>
   );

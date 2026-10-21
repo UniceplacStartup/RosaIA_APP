@@ -1,6 +1,5 @@
 import { useUi } from '../../context/UiContext';
 import AboutSection from '../about/AboutSection';
-import ArchitectureSection from '../architecture/ArchitectureSection';
 import ChatSidebar from '../chat/ChatSidebar';
 import ChatWindow from '../chat/ChatWindow';
 import ProfileSection from '../profile/ProfileSection';
@@ -33,7 +32,6 @@ export default function AppShell() {
         </section>
       )}
 
-      {activeTab === 'arquitetura' && <ArchitectureSection />}
       {activeTab === 'sobre' && <AboutSection />}
       {activeTab === 'perfil' && <ProfileSection />}
     </div>

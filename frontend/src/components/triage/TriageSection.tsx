@@ -29,16 +29,16 @@ export default function TriageSection() {
     const result = classifyTriage({ ageRange, familyHistory, symptoms });
     setAssessment(result);
     appendAssistantMessage(
-      'Triagem Inteligente • RF10',
-      `Resultado da Triagem (RF10): ${result.label}\n${result.guidance}`,
+      'Triagem de Atenção Mamária',
+      `Resultado da Triagem: ${result.label}\n${result.guidance}`,
     );
-    showToast('Triagem Registrada (RF10)', 'Resumo enviado também para a sua conversa com a Doutora Rosa!', 'success');
+    showToast('Triagem Registrada', 'Resumo enviado também para a sua conversa com a Doutora Rosa!', 'success');
   };
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-rosa-200 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-extrabold text-rosa-800">🩺 Triagem Inteligente de Atenção Mamária (RF10)</h2>
+        <h2 className="text-lg font-extrabold text-rosa-800">🩺 Triagem de Atenção Mamária</h2>
         <span className="text-xs px-2.5 py-0.5 rounded-full bg-rosa-100 text-rosa-800 font-semibold">
           Educativo • Não Diagnóstico
         </span>
@@ -134,7 +134,7 @@ export default function TriageSection() {
           role="status"
           className={`p-4 rounded-2xl border text-xs space-y-1.5 ${RESULT_TONE[assessment.level]}`}
         >
-          <div className="font-extrabold text-sm">Resultado da Triagem (RF10): {assessment.label}</div>
+          <div className="font-extrabold text-sm">Resultado da Triagem: {assessment.label}</div>
           <div>{assessment.guidance}</div>
         </div>
       )}

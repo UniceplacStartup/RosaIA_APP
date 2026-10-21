@@ -46,9 +46,9 @@ class Settings(BaseSettings):
         default="",
         description="Chave de API do Google AI Studio (Gemini 2.5 Flash)",
     )
-    GEMINI_MODEL: str = "gemini-3.8-flash"
-    # Modelo alternativo usado automaticamente se o principal estiver indisponível (404/descontinuado)
-    GEMINI_FALLBACK_MODEL: str = "gemini-flash-latest"
+    GEMINI_MODEL: str = "gemini-3.5-flash"
+    # Modelo alternativo usado automaticamente se o principal estiver indisponível ou esgotar cota
+    GEMINI_FALLBACK_MODEL: str = "gemini-3.5-flash-lite"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     EMBEDDING_DIMENSION: int = 768
 

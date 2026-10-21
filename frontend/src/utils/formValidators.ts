@@ -39,7 +39,7 @@ export function validateRegistration(values: RegisterFormValues): RegistrationVa
     return {
       ok: false,
       feedback: {
-        title: 'Nome Incompleto (RF03)',
+        title: 'Nome Incompleto',
         message: 'Por favor, informe pelo menos seu nome e sobrenome (ex: Maria da Silva).',
         type: 'error',
       },
@@ -55,7 +55,7 @@ export function validateRegistration(values: RegisterFormValues): RegistrationVa
     return {
       ok: false,
       feedback: {
-        title: 'CPF Inválido (OWASP Input Validation)',
+        title: 'CPF Inválido',
         message: 'O CPF informado não passou no cálculo dos dígitos verificadores.',
         type: 'error',
       },
@@ -66,7 +66,7 @@ export function validateRegistration(values: RegisterFormValues): RegistrationVa
     return {
       ok: false,
       feedback: {
-        title: 'Senha fora do Padrão OWASP',
+        title: 'Senha Fora do Padrão',
         message: 'A senha precisa ter 8+ caracteres, maiúscula, minúscula, número e símbolo.',
         type: 'error',
       },
@@ -86,7 +86,7 @@ export function validateRegistration(values: RegisterFormValues): RegistrationVa
     return {
       ok: false,
       feedback: {
-        title: 'Termos Obrigatórios (RF06)',
+        title: 'Termos Obrigatórios',
         message: 'Aceite os Termos de Uso e LGPD para prosseguir.',
         type: 'warning',
       },

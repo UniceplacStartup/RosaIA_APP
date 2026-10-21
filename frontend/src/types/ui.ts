@@ -9,4 +9,4 @@ export interface Toast {
   leaving: boolean;
 }
 
-export type AppTab = 'chat' | 'triagem' | 'arquitetura' | 'sobre' | 'perfil';
+export type AppTab = 'chat' | 'triagem' | 'sobre' | 'perfil';

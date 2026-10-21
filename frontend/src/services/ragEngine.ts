@@ -51,7 +51,7 @@ export function generateLocalDoutoraRosaResponse(userText: string): AssistantRep
   if (ctx.hasSymptom) {
     return {
       emotionTag: 'Orientação em Saúde Mamária • INCA',
-      monitorUpdate: { badgeLabel: 'Orientação de Sinais e Sintomas (RF08)', tone: 'info' },
+      monitorUpdate: { badgeLabel: 'Orientação de Sinais e Sintomas', tone: 'info' },
       text: 'Obrigada por compartilhar isso comigo! 🩺 Observar o próprio corpo é fundamental.\n\n• **O que saber sem alarme:** Dores mamárias, pequenos nódulos móveis ou alterações hormonais costumam ser frequentes e, na maioria das vezes, benignos.\n• **Quando procurar o médico:** Sempre que notar um caroço fixo, vermelhidão na pele (aspecto casca de laranja), retração ou saída espontânea de líquido pelo mamilo, o ideal é agendar uma consulta médica para avaliação clínica.\n\nQuer que eu crie um lembrete na aba **"Triagem & Lembretes"** para você agendar sua consulta?',
     };
   }
