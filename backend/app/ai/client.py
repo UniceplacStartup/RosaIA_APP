@@ -1,37 +1,61 @@
 from typing import List, Optional
-import google.generativeai as genai
+
+from google import genai
+from google.genai import types
 
 from app.core.config import settings
 from app.core.logging import logger
 
-_is_configured = False
+_client: Optional[genai.Client] = None
 
 
-def get_genai_client():
-    """Inicializa e configura o cliente oficial do Google Generative AI (Gemini)."""
-    global _is_configured
-    if not _is_configured and settings.GEMINI_API_KEY:
+def get_genai_client() -> Optional[genai.Client]:
+    """
+    Retorna o cliente oficial do Google Gen AI SDK (`google-genai`) ou None quando
+    a chave não está configurada (ou ainda é o texto de exemplo do .env.example).
+    """
+    global _client
+    if not is_gemini_configured():
+        return None
+    if _client is None:
         try:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            _is_configured = True
-            logger.info("Google Generative AI configurado com sucesso.")
+            _client = genai.Client(
+                api_key=settings.GEMINI_API_KEY,
+                http_options=types.HttpOptions(timeout=int(settings.GEMINI_TIMEOUT_SECONDS * 1000)),
+            )
+            logger.info("Google Gen AI configurado com sucesso (modelo: %s).", settings.GEMINI_MODEL)
         except Exception as e:
-            logger.error(f"Falha ao configurar Google Generative AI: {e}")
-    return genai
+            logger.error("Falha ao configurar Google Gen AI: %s", e)
+            return None
+    return _client
 
 
-async def generate_text_embedding(text: str) -> Optional[List[float]]:
-    """Gera o vetor de embedding de 768 dimensões usando text-embedding-004."""
-    if not settings.GEMINI_API_KEY:
+def is_gemini_configured() -> bool:
+    key = (settings.GEMINI_API_KEY or "").strip()
+    return bool(key) and not key.lower().startswith(("sua_chave", "aizasy_suachave"))
+
+
+async def generate_text_embedding(
+    text: str, task_type: str = "RETRIEVAL_QUERY"
+) -> Optional[List[float]]:
+    """
+    Gera o vetor de embedding de 768 dimensões (gemini-embedding-001 com
+    output_dimensionality=768, compatível com a coluna pgvector).
+    Use task_type="RETRIEVAL_DOCUMENT" ao indexar documentos da base de conhecimento.
+    """
+    client = get_genai_client()
+    if client is None:
         return None
     try:
-        client = get_genai_client()
-        result = client.embed_content(
-            model=f"models/{settings.GEMINI_EMBEDDING_MODEL}",
-            content=text,
-            task_type="retrieval_query",
+        result = await client.aio.models.embed_content(
+            model=settings.GEMINI_EMBEDDING_MODEL,
+            contents=text,
+            config=types.EmbedContentConfig(
+                task_type=task_type,
+                output_dimensionality=settings.EMBEDDING_DIMENSION,
+            ),
         )
-        return result.get("embedding")
+        return list(result.embeddings[0].values)
     except Exception as e:
-        logger.warning(f"Erro ao gerar embedding via Gemini: {e}")
+        logger.warning("Erro ao gerar embedding via Gemini: %s", e)
         return None

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, String, Text
+from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,12 @@ class KnowledgeBaseChunk(Base):
 
     # Vetor de 768 dimensões gerado por text-embedding-004 do Google Gemini
     embedding = mapped_column(Vector(768), nullable=True)
+
+    # official = fontes científicas ingeridas dos arquivos; curated = correções aprovadas por profissionais
+    origin: Mapped[str] = mapped_column(String(20), nullable=False, default="official", server_default="official", index=True)
+    # SHA-256 de título+conteúdo: torna a ingestão idempotente
+    content_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
