@@ -15,6 +15,7 @@ import { buildAnonymizedPreview } from '../utils/anonymizer';
 import { validateExamFile } from '../utils/examFileValidator';
 import { formatClockTime } from '../utils/format';
 import { safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
+import { api, getStoredToken } from '../services/api';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
@@ -81,13 +82,35 @@ function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
+function getInitialMessagesForUser(user: { fullName?: string; email?: string } | null): ChatMessage[] {
+  if (!user || !user.email || user.email === 'maria.silva@exemplo.com') {
+    return [...INITIAL_MESSAGES];
+  }
+  const firstName = user.fullName?.trim().split(' ')[0] || 'Usuária';
+  return [
+    {
+      id: `welcome_${Date.now()}`,
+      dateGroup: 'Hoje',
+      time: formatClockTime(),
+      sender: 'doutora_rosa',
+      emotionTag: 'Acolhimento Inicial',
+      text: `Olá, ${firstName}! 🌸 Seja muito bem-vinda ao RosaIA APP. Eu sou a Doutora Rosa, sua assistente virtual de acolhimento e educação em saúde mamária. Nossa conversa fica salva aqui com segurança para você me chamar sempre que precisar. Como você está se sentindo hoje?`,
+    },
+  ];
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
-  const { accountResetToken } = useAuth();
+  const { user, isAuthenticated, accountResetToken } = useAuth();
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    safeGetStorage<ChatMessage[]>(STORAGE_KEYS.messages, [...INITIAL_MESSAGES], isMessageList),
-  );
+  const getUserStorageKey = useCallback((email?: string) => {
+    return email ? `${STORAGE_KEYS.messages}_${email.trim().toLowerCase()}` : STORAGE_KEYS.messages;
+  }, []);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const key = user?.email ? `${STORAGE_KEYS.messages}_${user.email.trim().toLowerCase()}` : STORAGE_KEYS.messages;
+    return safeGetStorage<ChatMessage[]>(key, getInitialMessagesForUser(user), isMessageList);
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [emotionMonitor, setEmotionMonitor] = useState<EmotionMonitorState>(DEFAULT_EMOTION_MONITOR);
   const [geminiApiKey, setGeminiApiKey] = useState<string>(() => safeGetStorage(STORAGE_KEYS.geminiKey, '', isString));
@@ -101,11 +124,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const offlineRef = useRef(simulateOffline);
   const lastFailedRef = useRef<FailedMessage | null>(null);
 
-  const commitMessages = useCallback((next: ChatMessage[], persist = true) => {
-    messagesRef.current = next;
-    setMessages(next);
-    if (persist) safeSetStorage(STORAGE_KEYS.messages, next);
-  }, []);
+  const commitMessages = useCallback(
+    (next: ChatMessage[], persist = true) => {
+      messagesRef.current = next;
+      setMessages(next);
+      if (persist) {
+        const storageKey = getUserStorageKey(user?.email);
+        safeSetStorage(storageKey, next);
+      }
+    },
+    [getUserStorageKey, user?.email],
+  );
 
   const setOffline = useCallback((value: boolean) => {
     offlineRef.current = value;
@@ -117,12 +146,48 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [commitMessages],
   );
 
+  // Sincroniza o chat quando a usuária autenticar ou trocar de conta
+  useEffect(() => {
+    const token = getStoredToken();
+    const currentEmail = user?.email;
+    const storageKey = getUserStorageKey(currentEmail);
+
+    if (token && isAuthenticated) {
+      api.chat
+        .getHistory()
+        .then((history) => {
+          if (history && history.messages && history.messages.length > 0) {
+            const mapped: ChatMessage[] = history.messages.map((m) => ({
+              id: m.id,
+              dateGroup: m.date_group,
+              time: m.time,
+              sender: m.sender,
+              text: m.text,
+              emotionTag: m.emotion_tag || undefined,
+              docAttachment: m.doc_attachment,
+            }));
+            commitMessages(mapped, true);
+            return;
+          }
+          const fresh = getInitialMessagesForUser(user);
+          commitMessages(fresh, true);
+        })
+        .catch(() => {
+          const local = safeGetStorage<ChatMessage[]>(storageKey, getInitialMessagesForUser(user), isMessageList);
+          commitMessages(local, false);
+        });
+    } else {
+      const local = safeGetStorage<ChatMessage[]>(storageKey, getInitialMessagesForUser(user), isMessageList);
+      commitMessages(local, false);
+    }
+  }, [user?.email, isAuthenticated, getUserStorageKey, commitMessages]);
+
   // Exclusão de conta (LGPD): restaura estado inicial sem regravar o storage.
   const lastResetToken = useRef(accountResetToken);
   useEffect(() => {
     if (lastResetToken.current === accountResetToken) return;
     lastResetToken.current = accountResetToken;
-    commitMessages([...INITIAL_MESSAGES], false);
+    commitMessages(getInitialMessagesForUser(null), false);
     geminiKeyRef.current = '';
     setGeminiApiKey('');
     setOffline(false);
@@ -155,15 +220,37 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       });
       setIsTyping(true);
 
-      // Gemini (opcional) com contingência para o motor RAG local
+      // 1. Tenta envio pela API FastAPI se houver token ativo e não for modo offline simulado
       let reply: AssistantReply | null = null;
-      if (isGeminiKeyUsable(geminiKeyRef.current)) {
+      const token = getStoredToken();
+      if (token && !offlineRef.current) {
+        try {
+          const apiMsg = await api.chat.sendMessage(text, docAttachment);
+          reply = {
+            emotionTag: apiMsg.emotion_tag || 'Doutora Rosa • IA Conectada',
+            text: apiMsg.text,
+          };
+          if (apiMsg.psychological_support_triggered) {
+            setEmotionMonitor({
+              badgeLabel: 'Apoio Psicológico Ativo (RAG/INCA)',
+              tone: 'support',
+              explanation: 'fear_symptom',
+            });
+          }
+        } catch {
+          // Fallback silencioso para Gemini direto ou motor local
+          reply = null;
+        }
+      }
+
+      // 2. Gemini direto (opcional se chave fornecida) caso a API não tenha respondido
+      if (!reply && isGeminiKeyUsable(geminiKeyRef.current)) {
         reply = await askGemini(geminiKeyRef.current, text);
       }
 
-      await new Promise<void>((resolve) => window.setTimeout(resolve, REPLY_DELAY_MS));
-
+      // 3. Fallback: motor RAG local (100% offline)
       if (!reply) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, REPLY_DELAY_MS));
         reply = generateLocalDoutoraRosaResponse(text);
         const update = reply.monitorUpdate;
         if (update) setEmotionMonitor((prev) => ({ ...prev, ...update }));
@@ -230,6 +317,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         rawContent = '';
       }
       const preview = buildAnonymizedPreview(rawContent);
+
+      const token = getStoredToken();
+      if (token && !offlineRef.current) {
+        try {
+          showToast('Analisando Laudo...', 'Processando documento na API com salvaguardas LGPD...', 'info');
+          const uploadRes = await api.upload.uploadDocument(file);
+          showToast('📄 Documento Analisado', 'Laudo processado com sucesso pela Doutora Rosa!', 'success');
+
+          const explanation = uploadRes.ai_educational_analysis
+            ? `Doutora Rosa, enviei meu exame (${file.name}). Análise educativa do laudo: ${uploadRes.ai_educational_analysis}`
+            : `Doutora Rosa, enviei meu laudo (${file.name}). Trecho anonimizado: "${uploadRes.anonymized_preview || preview}". Pode me explicar com calma?`;
+
+          await sendMessage(explanation, file.name);
+          return;
+        } catch {
+          // Se upload na API falhar, cai no fluxo local
+        }
+      }
+
       showToast('📄 Documento Anonimizado (LGPD)', 'CPF e dados pessoais removidos antes da leitura pela IA.', 'success');
       await sendMessage(
         `Doutora Rosa, enviei meu documento de exame (${file.name}). Trecho anonimizado: "${preview || 'Laudo anexado para leitura educativa'}". Pode me explicar os termos com calma?`,

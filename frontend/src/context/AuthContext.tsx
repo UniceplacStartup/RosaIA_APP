@@ -1,17 +1,21 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthView, User } from '../types/auth';
-import { DEMO_USER } from '../data/seedData';
+import { DEMO_USER, DEMO_PASSWORD } from '../data/seedData';
 import { onlyDigits } from '../utils/cpfValidator';
 import { maskCpfLgpd, simulateBlindIndex } from '../utils/cryptoSimulation';
 import { isValidEmail } from '../utils/formValidators';
 import { clearAllStorage, safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
+import { api, ApiError, clearStoredToken } from '../services/api';
 import { useToast } from './ToastContext';
 
-interface RegisterPayload {
+export interface RegisterPayload {
   fullName: string;
   email: string;
   cpf: string;
+  password?: string;
+  confirmPassword?: string;
+  acceptedTerms?: boolean;
 }
 
 interface AuthContextValue {
@@ -21,10 +25,10 @@ interface AuthContextValue {
   setAuthView: (view: AuthView) => void;
   /** Incrementa a cada exclusão de conta; outros contextos reagem limpando seus dados. */
   accountResetToken: number;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   loginDemo: () => void;
-  register: (payload: RegisterPayload) => void;
-  requestPasswordReset: (email: string) => boolean;
+  register: (payload: RegisterPayload) => Promise<boolean>;
+  requestPasswordReset: (email: string) => Promise<boolean>;
   logout: () => void;
   deleteAccount: (confirmation: string) => boolean;
 }
@@ -62,43 +66,125 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const login = useCallback(
-    (email: string, password: string): boolean => {
-      const cleanEmail = email.trim();
-      if (!cleanEmail || !password) {
-        showToast('Campos Obrigatórios', 'Preencha seu e-mail e senha para entrar.', 'warning');
+    async (identifier: string, password: string): Promise<boolean> => {
+      const cleanIdentifier = identifier.trim();
+      if (!cleanIdentifier || !password) {
+        showToast('Campos Obrigatórios', 'Preencha seu e-mail ou CPF e senha para entrar.', 'warning');
         return false;
       }
-      enterApp({ ...user, email: cleanEmail }, 'Sessão autenticada com sucesso! Histórico recorrente desde 02/09 carregado.');
-      return true;
+
+      try {
+        const response = await api.auth.login({
+          identifier: cleanIdentifier,
+          password,
+        });
+
+        const apiUser = response.user;
+        const loggedUser: User = {
+          fullName: apiUser.full_name || apiUser.fullName || user.fullName,
+          email: apiUser.email || cleanIdentifier,
+          cpfMasked: apiUser.cpf_masked || apiUser.cpfMasked || '***.***.***-**',
+          cpfHash: apiUser.cpf_hash || apiUser.cpfHash || '',
+        };
+
+        enterApp(loggedUser, 'Sessão autenticada via API com persistência no banco Neon!');
+        return true;
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 0) {
+          if (cleanIdentifier.toLowerCase() === DEMO_USER.email.toLowerCase() && password === DEMO_PASSWORD) {
+            enterApp(DEMO_USER, 'Modo Demonstração (Backend offline). Histórico simulado ativo.');
+            return true;
+          }
+          showToast(
+            'Servidor Backend Offline',
+            'Não foi possível conectar à API em http://localhost:8000. Inicie o servidor FastAPI.',
+            'error'
+          );
+          return false;
+        }
+
+        const msg =
+          err instanceof ApiError
+            ? err.message
+            : 'Credenciais inválidas ou conta bloqueada temporariamente por segurança.';
+        showToast('Falha no Login', msg, 'error');
+        return false;
+      }
     },
     [enterApp, showToast, user],
   );
 
   const loginDemo = useCallback(() => {
-    enterApp(DEMO_USER, 'Bem-vinda de volta, Maria da Silva! Seu histórico desde 02/09 está pronto.');
+    enterApp(DEMO_USER, 'Bem-vinda de volta, Maria da Silva! Modo demonstração pronto.');
   }, [enterApp]);
 
   const register = useCallback(
-    ({ fullName, email, cpf }: RegisterPayload) => {
-      const newUser: User = {
-        fullName,
-        email,
-        cpfMasked: maskCpfLgpd(cpf),
-        cpfHash: simulateBlindIndex(onlyDigits(cpf)),
-      };
-      enterApp(newUser, 'Cadastro realizado com segurança! CPF protegido com Blind Index SHA-256 e senha criptografada.');
+    async ({
+      fullName,
+      email,
+      cpf,
+      password,
+      confirmPassword,
+      acceptedTerms,
+    }: RegisterPayload): Promise<boolean> => {
+      const cleanCpf = onlyDigits(cpf);
+
+      try {
+        const response = await api.auth.register({
+          full_name: fullName,
+          email: email.trim().toLowerCase(),
+          cpf: cleanCpf,
+          password: password || 'SenhaSegura@2026',
+          confirm_password: confirmPassword || password || 'SenhaSegura@2026',
+          accepted_terms: acceptedTerms !== false,
+        });
+
+        const apiUser = response.user;
+        const newUser: User = {
+          fullName: apiUser.full_name || apiUser.fullName || fullName,
+          email: apiUser.email || email,
+          cpfMasked: apiUser.cpf_masked || apiUser.cpfMasked || maskCpfLgpd(cleanCpf),
+          cpfHash: apiUser.cpf_hash || apiUser.cpfHash || simulateBlindIndex(cleanCpf),
+        };
+
+        enterApp(
+          newUser,
+          'Cadastro realizado com sucesso na API e registrado no banco Neon com Blind Index!',
+        );
+        return true;
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 0) {
+          showToast(
+            'Servidor Backend Offline',
+            'Não foi possível salvar a conta no banco Neon porque o backend FastAPI não está respondendo na porta 8000.',
+            'error'
+          );
+          return false;
+        }
+
+        const msg = err instanceof ApiError ? err.message : 'Não foi possível completar o cadastro.';
+        showToast('Erro no Cadastro', msg, 'error');
+        return false;
+      }
     },
-    [enterApp],
+    [enterApp, showToast],
   );
 
   /** OWASP A07: resposta idêntica exista ou não a conta (anti-enumeração). */
   const requestPasswordReset = useCallback(
-    (email: string): boolean => {
+    async (email: string): Promise<boolean> => {
       const clean = email.trim();
       if (!clean || !isValidEmail(clean)) {
         showToast('E-mail Obrigatório', 'Informe um endereço de e-mail válido.', 'warning');
         return false;
       }
+
+      try {
+        await api.auth.recoverPassword(clean);
+      } catch {
+        // Silencioso ou contingência
+      }
+
       showToast('Solicitação Processada (RF05)', 'Se o e-mail estiver cadastrado, enviaremos o link de redefinição.', 'success');
       return true;
     },
@@ -106,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    api.auth.logout();
     setIsAuthenticated(false);
     setAuthView('login');
     showToast('Sessão Encerrada (RF12)', 'Você saiu da sua conta com segurança.', 'info');
@@ -117,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         showToast('Confirmação Necessária', 'Digite EXCLUIR para confirmar a remoção permanente.', 'warning');
         return false;
       }
+      clearStoredToken();
       clearAllStorage();
       setUser(DEMO_USER);
       setAccountResetToken((token) => token + 1);

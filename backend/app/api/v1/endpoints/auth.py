@@ -9,7 +9,12 @@ from app.schemas.auth import (
     PasswordResetRequest,
     PasswordResetResponse
 )
-from app.services.auth_service import register_user, authenticate_user
+from app.services.auth_service import (
+    register_user,
+    authenticate_user,
+    check_cpf_exists,
+    check_email_exists,
+)
 from app.core.logging import log_security_event
 from app.core.security import hash_ip
 
@@ -93,3 +98,36 @@ async def recover_password(
     return PasswordResetResponse(
         message="Se os dados informados constarem em nossa base, as instruções de recuperação serão encaminhadas com segurança."
     )
+
+
+@router.get(
+    "/check-cpf",
+    summary="Verifica se o CPF já está cadastrado (Blind Index LGPD)",
+    status_code=status.HTTP_200_OK
+)
+async def check_cpf(
+    cpf: str,
+    db: AsyncSession = Depends(get_db)
+):
+    exists = await check_cpf_exists(db, cpf)
+    return {
+        "exists": exists,
+        "message": "Este CPF já possui cadastro no RosaIA." if exists else "CPF disponível para cadastro."
+    }
+
+
+@router.get(
+    "/check-email",
+    summary="Verifica se o e-mail já está cadastrado",
+    status_code=status.HTTP_200_OK
+)
+async def check_email(
+    email: str,
+    db: AsyncSession = Depends(get_db)
+):
+    exists = await check_email_exists(db, email)
+    return {
+        "exists": exists,
+        "message": "Este e-mail já possui cadastro no RosaIA." if exists else "E-mail disponível para cadastro."
+    }
+

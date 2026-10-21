@@ -5,8 +5,15 @@ from fastapi import HTTPException, status
 class RosaIABaseException(HTTPException):
     """Exceção base do ecossistema RosaIA APP."""
 
-    def __init__(self, status_code: int, detail: str, headers: Optional[dict[str, str]] = None):
-        super().__init__(status_code=status_code, detail=detail, headers=headers)
+    def __init__(
+        self,
+        status_code: int = status.HTTP_400_BAD_REQUEST,
+        detail: Optional[str] = None,
+        message: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
+    ):
+        msg = detail or message or "Erro de validação ou regra de negócio."
+        super().__init__(status_code=status_code, detail=msg, headers=headers)
 
 
 class LGPDImageBlockedException(RosaIABaseException):
@@ -47,10 +54,14 @@ class AuthenticationFailedException(RosaIABaseException):
 class AccountLockedException(RosaIABaseException):
     """Lançada quando a conta foi temporariamente bloqueada por força bruta (OWASP A07)."""
 
-    def __init__(self, lockout_minutes: int = 15):
+    def __init__(self, lockout_minutes: Any = 15):
+        if isinstance(lockout_minutes, int):
+            msg = f"Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em {lockout_minutes} minutos."
+        else:
+            msg = str(lockout_minutes)
         super().__init__(
             status_code=status.HTTP_423_LOCKED,
-            detail=f"Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em {lockout_minutes} minutos.",
+            detail=msg,
         )
 
 

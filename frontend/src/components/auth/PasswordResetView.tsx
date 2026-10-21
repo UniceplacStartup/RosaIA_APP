@@ -9,9 +9,10 @@ export default function PasswordResetView() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (requestPasswordReset(email)) setSubmitted(true);
+    const ok = await requestPasswordReset(email);
+    if (ok) setSubmitted(true);
   };
 
   return (

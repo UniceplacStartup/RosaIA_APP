@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, Integer, LargeBinary, String
@@ -48,6 +48,19 @@ class User(Base):
 
     # LGPD Art. 18: Flag de conta ativa ou anonimizada
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    @property
+    def is_locked(self) -> bool:
+        if self.locked_until is None:
+            return False
+        return self.locked_until > datetime.now(timezone.utc)
+
+    @is_locked.setter
+    def is_locked(self, value: bool) -> None:
+        if not value:
+            self.locked_until = None
+        else:
+            self.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     # Relacionamentos
     consents = relationship("UserConsent", back_populates="user", cascade="all, delete-orphan")
