@@ -57,6 +57,7 @@ interface ChatContextValue {
   jumpToDate: (dateGroup: string) => void;
   saveGeminiKey: (key: string) => void;
   clearGeminiKey: () => void;
+  submitFeedback: (messageId: string, rating: number, comment?: string, allowTrainingUse?: boolean) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
@@ -165,6 +166,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               text: m.text,
               emotionTag: m.emotion_tag || undefined,
               docAttachment: m.doc_attachment,
+              userRating: m.user_rating,
+              aiModel: m.ai_model,
+              usedFallback: m.used_fallback,
+              urgencyLevel: m.urgency_level,
             }));
             commitMessages(mapped, true);
             return;
@@ -222,10 +227,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       // 1. Tenta envio pela API FastAPI se houver token ativo e não for modo offline simulado
       let reply: AssistantReply | null = null;
+      let apiReturnedId: string | null = null;
+      let apiModelInfo: string | null = null;
+      let apiUsedFallback = false;
+      let apiUrgencyLevel = 'none';
+
       const token = getStoredToken();
       if (token && !offlineRef.current) {
         try {
           const apiMsg = await api.chat.sendMessage(text, docAttachment);
+          apiReturnedId = apiMsg.id;
+          apiModelInfo = apiMsg.ai_model || null;
+          apiUsedFallback = !!apiMsg.used_fallback;
+          apiUrgencyLevel = apiMsg.urgency_level || 'none';
+
           reply = {
             emotionTag: apiMsg.emotion_tag || 'Doutora Rosa • IA Conectada',
             text: apiMsg.text,
@@ -258,15 +273,47 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       setIsTyping(false);
       pushMessage({
-        id: makeMessageId('r'),
+        id: apiReturnedId || makeMessageId('r'),
         dateGroup: 'Hoje',
         time: formatClockTime(),
         sender: 'doutora_rosa',
         emotionTag: reply.emotionTag,
         text: reply.text,
+        aiModel: apiModelInfo,
+        usedFallback: apiUsedFallback,
+        urgencyLevel: apiUrgencyLevel,
       });
     },
     [pushMessage, showToast],
+  );
+
+  const submitFeedback = useCallback(
+    async (messageId: string, rating: number, comment?: string, allowTrainingUse = false) => {
+      // Atualiza o estado local imediatamente
+      commitMessages(
+        messagesRef.current.map((m) => (m.id === messageId ? { ...m, userRating: rating } : m)),
+        true,
+      );
+
+      const token = getStoredToken();
+      if (token && !offlineRef.current) {
+        try {
+          await api.chat.submitFeedback(messageId, rating, comment, allowTrainingUse);
+          showToast(
+            rating > 0 ? 'Obrigada pelo feedback! 🌸' : 'Feedback registrado',
+            rating > 0
+              ? 'Sua avaliação positiva ajuda a validar o cuidado da Doutora Rosa.'
+              : 'Nossa equipe clínica revisará esta resposta para melhorar o acolhimento.',
+            'success',
+          );
+        } catch {
+          // Feedback salvo localmente
+        }
+      } else {
+        showToast('Feedback salvo', 'Registrado no seu histórico local.', 'info');
+      }
+    },
+    [commitMessages, showToast],
   );
 
   const retryLastMessage = useCallback(() => {
@@ -413,11 +460,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       jumpToDate,
       saveGeminiKey,
       clearGeminiKey,
+      submitFeedback,
     }),
     [
       messages, isTyping, emotionMonitor, geminiApiKey, simulateOffline, errorBannerText, jumpRequest,
       sendMessage, retryLastMessage, toggleOfflineSimulation, uploadExamFile, simulateSampleDocument,
-      appendAssistantMessage, jumpToDate, saveGeminiKey, clearGeminiKey,
+      appendAssistantMessage, jumpToDate, saveGeminiKey, clearGeminiKey, submitFeedback,
     ],
   );
 

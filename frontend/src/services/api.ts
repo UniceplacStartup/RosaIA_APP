@@ -124,6 +124,10 @@ export interface ApiMessageResponse {
   psychological_support_triggered?: boolean;
   rag_references?: string[];
   created_at: string;
+  ai_model?: string | null;
+  used_fallback?: boolean;
+  urgency_level?: string;
+  user_rating?: number | null;
 }
 
 export interface ApiThreadDetail {
@@ -239,6 +243,29 @@ export const api = {
           attached_document_id: attached_document_id || null,
         }),
       }),
+
+    submitFeedback: (messageId: string, rating: number, comment?: string, allowTrainingUse: boolean = false) =>
+      request<{ id: string; rating: number; review_status: string }>(`/chat/messages/${messageId}/feedback`, {
+        method: 'POST',
+        body: JSON.stringify({
+          rating,
+          comment: comment || null,
+          allow_training_use: allowTrainingUse,
+        }),
+      }),
+
+    getMetrics: () =>
+      request<{
+        total_messages: number;
+        total_feedbacks: number;
+        positive_feedbacks: number;
+        negative_feedbacks: number;
+        satisfaction_rate: number;
+        fallback_rate: number;
+        avg_latency_ms: number;
+        active_kb_chunks: number;
+        curated_kb_chunks: number;
+      }>('/chat/metrics'),
   },
 
   upload: {

@@ -13,6 +13,12 @@ export interface ChatMessage {
   emotionTag?: string;
   /** Nome do documento anonimizado anexado (LGPD) */
   docAttachment?: string | null;
+  /** Avaliação da usuária (1 para 👍, -1 para 👎) */
+  userRating?: number | null;
+  /** Telemetria da IA */
+  aiModel?: string | null;
+  usedFallback?: boolean;
+  urgencyLevel?: string;
 }
 
 /** Sinais detectados no texto da usuária pelo motor RAG local. */

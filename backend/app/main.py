@@ -30,6 +30,13 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Iniciando RosaIA Backend (Centro Universitário UNICEPLAC)...")
     logger.info("Ambiente: %s | Host: %s", settings.ENVIRONMENT, settings.PROJECT_NAME)
+
+    # Ingestão científica automática e idempotente em segundo plano
+    if getattr(settings, "AUTO_INGEST_KNOWLEDGE_BASE", True):
+        import asyncio
+        from app.knowledge_base.ingest_knowledge import ingest_all_knowledge_chunks
+        asyncio.create_task(ingest_all_knowledge_chunks())
+
     yield
     logger.info("Finalizando conexões e encerrando RosaIA Backend com segurança.")
 

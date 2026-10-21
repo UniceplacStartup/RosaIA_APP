@@ -6,6 +6,7 @@ from app.db.models.triage import TriageAssessment
 from app.db.models.reminder import HealthReminder
 from app.db.models.knowledge import KnowledgeBaseChunk
 from app.db.models.audit import SecurityAuditLog
+from app.db.models.feedback import MessageFeedback
 
 __all__ = [
     "User",
@@ -17,4 +18,5 @@ __all__ = [
     "HealthReminder",
     "KnowledgeBaseChunk",
     "SecurityAuditLog",
+    "MessageFeedback",
 ]

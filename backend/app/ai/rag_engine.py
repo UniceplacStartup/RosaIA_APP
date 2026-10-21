@@ -18,7 +18,7 @@ async def retrieve_relevant_medical_context(
     utilizando similaridade vetorial por cosseno (pgvector 768-dim) ou fallback.
     """
     try:
-        query_vector = await generate_text_embedding(query)
+        query_vector = await generate_text_embedding(query, task_type="RETRIEVAL_QUERY")
     except Exception as exc:
         logger.warning("Falha ao gerar embedding para consulta RAG: %s", exc)
         query_vector = None
@@ -35,7 +35,10 @@ async def retrieve_relevant_medical_context(
                     KnowledgeBaseChunk.content_text,
                     (1 - distance_expr).label("similarity")
                 )
-                .where(KnowledgeBaseChunk.embedding.isnot(None))
+                .where(
+                    KnowledgeBaseChunk.embedding.isnot(None),
+                    KnowledgeBaseChunk.is_active.is_(True)
+                )
                 .order_by(distance_expr.asc())
                 .limit(top_k)
             )

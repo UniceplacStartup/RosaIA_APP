@@ -60,6 +60,14 @@ class ChatMessage(Base):
     rag_references: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     response_latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # Telemetria da IA (melhoria contínua e monitoramento)
+    ai_model: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    used_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    prompt_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    urgency_level: Mapped[str] = mapped_column(String(20), nullable=False, default="none", server_default="none")
+    emotion_source: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True
     )

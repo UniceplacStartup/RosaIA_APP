@@ -9,6 +9,25 @@ class MessageSendRequest(BaseModel):
     attached_document_id: Optional[uuid.UUID] = Field(default=None, description="ID de laudo previamente anexado")
 
 
+class MessageFeedbackCreate(BaseModel):
+    rating: int = Field(..., ge=-1, le=1, description="1 para útil/positivo (👍), -1 para negativo (👎)")
+    comment: Optional[str] = Field(default=None, max_length=1000, description="Comentário ou sugestão de melhoria")
+    allow_training_use: bool = Field(
+        default=False,
+        description="Autorização explícita (LGPD) para uso do par pergunta/resposta na melhoria e treino supervisionado da IA"
+    )
+
+
+class MessageFeedbackResponse(BaseModel):
+    id: str
+    message_id: str
+    rating: int
+    comment: Optional[str] = None
+    allow_training_use: bool
+    review_status: str
+    created_at: datetime
+
+
 class MessageResponse(BaseModel):
     id: str
     date_group: str
@@ -20,6 +39,11 @@ class MessageResponse(BaseModel):
     psychological_support_triggered: bool = False
     rag_references: List[str] = []
     created_at: datetime
+    # Telemetria & Qualidade
+    ai_model: Optional[str] = None
+    used_fallback: bool = False
+    urgency_level: str = "none"
+    user_rating: Optional[int] = None
 
 
 class ThreadDetailResponse(BaseModel):
@@ -27,3 +51,22 @@ class ThreadDetailResponse(BaseModel):
     title: str
     current_emotional_state: str
     messages: List[MessageResponse]
+
+
+class AIMetricsResponse(BaseModel):
+    total_messages: int
+    total_feedbacks: int
+    positive_feedbacks: int
+    negative_feedbacks: int
+    satisfaction_rate: float
+    fallback_rate: float
+    avg_latency_ms: float
+    active_kb_chunks: int
+    curated_kb_chunks: int
+
+
+class CurateFeedbackRequest(BaseModel):
+    review_status: str = Field(..., description="approved, rejected, ou promoted")
+    curated_answer: Optional[str] = Field(default=None, description="Resposta revisada por especialista clínico")
+    reviewer_notes: Optional[str] = Field(default=None, description="Notas de auditoria clínica")
+    promote_to_kb: bool = Field(default=False, description="Se True, indexa a resposta como novo fragmento da base RAG")

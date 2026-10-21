@@ -46,9 +46,24 @@ class Settings(BaseSettings):
         default="",
         description="Chave de API do Google AI Studio (Gemini 2.5 Flash)",
     )
-    GEMINI_MODEL: str = "gemini-2.5-flash"
-    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    # Modelo alternativo usado automaticamente se o principal estiver indisponível (404/descontinuado)
+    GEMINI_FALLBACK_MODEL: str = "gemini-flash-latest"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     EMBEDDING_DIMENSION: int = 768
+
+    # Resiliência e monitoramento da IA
+    GEMINI_TIMEOUT_SECONDS: float = 30.0
+    GEMINI_MAX_RETRIES: int = 2
+    # Quantas mensagens anteriores da conversa são enviadas ao modelo (memória)
+    CHAT_HISTORY_MESSAGES: int = 12
+    # Webhook opcional (Slack/Discord/Teams) para alertar a equipe quando a IA cair no fallback
+    ALERT_WEBHOOK_URL: str = ""
+    ALERT_COOLDOWN_SECONDS: int = 600
+    # Papéis com acesso ao painel de curadoria e métricas da IA
+    REVIEWER_ROLES: Union[List[str], str] = ["reviewer", "admin"]
+    # Ingestão automática da base científica na inicialização (idempotente)
+    AUTO_INGEST_KNOWLEDGE_BASE: bool = True
 
     # CORS
     CORS_ORIGINS: Union[List[str], str] = [

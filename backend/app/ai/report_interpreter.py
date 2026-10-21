@@ -62,27 +62,28 @@ async def generate_educational_report_analysis(
         "Não foi possível identificar com clareza uma classificação BI-RADS padronizada (0 a 6) no texto fornecido."
     )
 
-    client = get_genai_client()
     summary_text = ""
     next_steps = ""
 
-    if client and settings.GEMINI_API_KEY:
-        try:
-            model = client.GenerativeModel(
-                model_name="gemini-2.5-flash",
-                system_instruction=SYSTEM_PROMPT_REPORT_ANALYSIS
-            )
-            prompt = (
-                f"Analise o seguinte laudo de imagem mamária desidentificado da paciente:\n\n"
-                f"--- LAUDO ---\n{sanitized_text}\n--- FIM DO LAUDO ---\n\n"
-                f"Classificação prévia detectada: BI-RADS {birads_cat if birads_cat is not None else 'Indeterminada'}.\n"
-                f"Forneça uma tradução didática, amigável e acolhedora, explicando os termos técnicos encontrados, "
-                f"o significado da classificação e as orientações recomendadas para a consulta médica presencial."
-            )
-            response = await model.generate_content_async(prompt)
-            summary_text = response.text.strip()
-        except Exception as exc:
-            logger.error("Erro ao invocar Gemini para análise de laudo: %s", exc)
+    prompt = (
+        f"Analise o seguinte laudo de imagem mamária desidentificado da paciente:\n\n"
+        f"--- LAUDO ---\n{sanitized_text}\n--- FIM DO LAUDO ---\n\n"
+        f"Classificação prévia detectada: BI-RADS {birads_cat if birads_cat is not None else 'Indeterminada'}.\n"
+        f"Forneça uma tradução didática, amigável e acolhedora, explicando os termos técnicos encontrados, "
+        f"o significado da classificação e as orientações recomendadas para a consulta médica presencial."
+    )
+
+    try:
+        from app.ai.llm import generate
+        result = await generate(
+            system_instruction=SYSTEM_PROMPT_REPORT_ANALYSIS,
+            turns=[("user", prompt)],
+            temperature=0.3,
+            purpose="report_analysis"
+        )
+        summary_text = result.text.strip()
+    except Exception as exc:
+        logger.error("Erro ao invocar Gemini para análise de laudo: %s", exc)
 
     if not summary_text:
         # Fallback determinístico caso o Gemini não esteja disponível
