@@ -14,17 +14,17 @@ LEVEL_PRIORITY = "priority"
 LEVEL_EMERGENCY = "emergency"
 
 NOTICE_EMERGENCY_MEDICAL = (
-    "⚠️ **Atenção:** o que você descreveu pode precisar de avaliação médica **urgente**. "
-    "Procure agora uma UPA/pronto-atendimento ou ligue para o **SAMU (192)**. "
+    "Atenção: o que você descreveu pode precisar de avaliação médica urgente. "
+    "Procure agora uma UPA/pronto-atendimento ou ligue para o SAMU (192). "
     "Não espere para buscar ajuda presencial."
 )
 NOTICE_EMERGENCY_MENTAL = (
-    "💗 **Sua vida importa muito.** Se você está pensando em se machucar ou desistir de viver, "
-    "ligue agora para o **CVV (188)** — gratuito, 24 horas — ou para o **SAMU (192)**, "
+    "Sua vida importa muito. Se você está pensando em se machucar ou desistir de viver, "
+    "ligue agora para o CVV (188) — gratuito, 24 horas — ou para o SAMU (192), "
     "ou vá ao pronto-atendimento mais próximo. Você não precisa passar por isso sozinha."
 )
 NOTICE_PRIORITY = (
-    "⚠️ **Importante:** esse sinal merece avaliação médica **prioritária**. Agende uma consulta "
+    "Importante: esse sinal merece avaliação médica prioritária. Agende uma consulta "
     "com mastologista ou procure sua UBS o quanto antes (idealmente nos próximos dias). "
     "Isso não significa que seja câncer — a maioria das alterações é benigna —, mas só um "
     "exame presencial consegue esclarecer com segurança."

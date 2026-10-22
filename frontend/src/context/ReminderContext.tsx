@@ -9,9 +9,11 @@ import { useToast } from './ToastContext';
 
 interface ReminderContextValue {
   reminders: Reminder[];
-  addReminder: (input: NewReminderInput) => boolean;
+  lastCreatedReminder: Reminder | null;
+  addReminder: (input: NewReminderInput) => Reminder | null;
   toggleReminder: (id: string) => void;
   removeReminder: (id: string) => void;
+  clearLastCreatedReminder: () => void;
 }
 
 const ReminderContext = createContext<ReminderContextValue | undefined>(undefined);
@@ -104,32 +106,49 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
     commit(getInitialRemindersForUser(null), false);
   }, [accountResetToken, commit]);
 
+  const [lastCreatedReminder, setLastCreatedReminder] = useState<Reminder | null>(null);
+
+  const clearLastCreatedReminder = useCallback(() => {
+    setLastCreatedReminder(null);
+  }, []);
+
   const addReminder = useCallback(
-    ({ tipo, titulo, data }: NewReminderInput): boolean => {
+    ({ tipo, titulo, data, hora, quandoLembrar, recorrencia }: NewReminderInput): Reminder | null => {
       const cleanTitle = titulo.trim();
       if (!cleanTitle || !data) {
         showToast('Preencha o Lembrete', 'Informe o título e a data do lembrete.', 'warning');
-        return false;
+        return null;
       }
-      const reminder: Reminder = { id: `rem_${Date.now()}`, tipo, titulo: cleanTitle, data, concluido: false };
+      const reminder: Reminder = {
+        id: `rem_${Date.now()}`,
+        tipo,
+        titulo: cleanTitle,
+        data,
+        hora: hora || '08:00',
+        quandoLembrar: quandoLembrar || 'no_horario',
+        recorrencia: recorrencia || 'unica',
+        concluido: false,
+      };
       commit([reminder, ...remindersRef.current]);
+      setLastCreatedReminder(reminder);
 
-      // Tenta persistir no Neon via API
+      // Tenta persistir via API se autenticado
       const token = getStoredToken();
       if (token) {
+        const dateTimeStr = hora ? `${data}T${hora}:00` : new Date(data).toISOString();
         api.reminders
           .create({
             reminder_type: tipo,
             title: cleanTitle,
-            scheduled_for: new Date(data).toISOString(),
+            scheduled_for: new Date(dateTimeStr).toISOString(),
           })
           .catch(() => {
             // Mantém no storage local caso offline
           });
       }
 
-      showToast('Lembrete Criado', 'Notificação programada com sucesso.', 'success');
-      return true;
+      showToast('Lembrete Criado', 'Lembrete programado! Você pode sincronizá-lo com suas agendas.', 'success');
+      return reminder;
     },
     [commit, showToast],
   );
@@ -161,8 +180,15 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ reminders, addReminder, toggleReminder, removeReminder }),
-    [reminders, addReminder, toggleReminder, removeReminder],
+    () => ({
+      reminders,
+      lastCreatedReminder,
+      addReminder,
+      toggleReminder,
+      removeReminder,
+      clearLastCreatedReminder,
+    }),
+    [reminders, lastCreatedReminder, addReminder, toggleReminder, removeReminder, clearLastCreatedReminder],
   );
 
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;

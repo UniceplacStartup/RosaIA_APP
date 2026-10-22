@@ -23,11 +23,11 @@ export default function ChatInputForm() {
     <form id="formChatSend" onSubmit={handleSubmit} className="p-3 bg-white border-t border-rosa-200 flex items-center gap-2">
       <label
         htmlFor="chatAttachInput"
-        title="Anexar Exame/Laudo em PDF ou Texto (Imagens Proibidas)"
+        title="Anexar Laudo ou Imagem de Exame (PDF, DICOM, Imagens)"
         className="cursor-pointer p-2.5 rounded-full bg-rosa-100 hover:bg-rosa-200 text-rosa-800 transition shrink-0"
       >
         <PaperclipIcon className="w-5 h-5" />
-        <span className="sr-only">Anexar laudo em PDF ou texto</span>
+        <span className="sr-only">Anexar laudo ou imagem de exame</span>
       </label>
       <input
         id="chatAttachInput"

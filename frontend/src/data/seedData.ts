@@ -52,7 +52,7 @@ export const INITIAL_MESSAGES: ReadonlyArray<ChatMessage> = [
     time: '18:40',
     sender: 'doutora_rosa',
     emotionTag: 'Apoio Contínuo • Incentivo ao Autocuidado',
-    text: 'Que notícia maravilhosa, Maria! Parabéns por cuidar da sua saúde! 👏🌸 Assim que o seu laudo sair em PDF ou texto, você pode anexar o documento aqui no clipe (lembrando que não recebemos fotos/imagens por proteção à sua privacidade na LGPD, apenas o texto/PDF do laudo) e eu te ajudo a entender cada termo técnico com calma!',
+    text: 'Que notícia maravilhosa, Maria! Parabéns por cuidar da sua saúde! 👏🌸 Assim que o seu laudo ou exame sair (em PDF, texto ou imagem médica/DICOM), você pode anexar o arquivo aqui no clipe. Seus dados pessoais são higienizados com total segurança e eu te ajudo a entender cada detalhe descritivo com carinho!',
   },
   {
     id: 'm6',

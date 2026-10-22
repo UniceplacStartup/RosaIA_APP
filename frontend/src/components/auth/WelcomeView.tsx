@@ -29,8 +29,8 @@ export default function WelcomeView() {
           </li>
           <li>Não substituímos consultas médicas, psicólogos ou atendimentos de emergência.</li>
           <li>
-            Por respeito à <strong>LGPD</strong>, fotos ou imagens das mamas/exames são bloqueadas; aceitamos apenas
-            documentos/laudos em PDF ou texto.
+            Por respeito à sua privacidade (<strong>LGPD</strong>), laudos e exames (incluindo imagens DICOM e convencionais)
+            são rigorosamente protegidos e higienizados contra a exposição de dados sensíveis.
           </li>
         </ul>
       </div>
@@ -50,7 +50,7 @@ export default function WelcomeView() {
           onClick={() => setAuthView('register')}
           className="w-full py-3 px-4 rounded-full bg-white hover:bg-rosa-100 text-rosa-800 border-2 border-rosa-800 font-bold text-sm transition"
         >
-          Criar nova conta (CPF + OWASP)
+          Criar nova conta
         </button>
       </div>
 

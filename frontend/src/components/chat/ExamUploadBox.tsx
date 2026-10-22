@@ -2,21 +2,20 @@ import { useChat } from '../../context/ChatContext';
 import { useExamFileInput } from '../../hooks/useExamFileInput';
 import { ALLOWED_DOCUMENT_ACCEPT } from '../../utils/examFileValidator';
 
-/** Card de upload de laudos (PDF/TXT/DOCX) com bloqueio estrito de imagens (LGPD) e testes em 1 clique. */
+/** Card de upload de laudos e imagens médicas (DICOM e convencionais) com sanitização LGPD. */
 export default function ExamUploadBox() {
   const { simulateSampleDocument } = useChat();
   const handleFileChange = useExamFileInput();
 
   return (
-    // A cor da borda segue o padrão do protótipo (a classe `border-rosa-400` nunca existiu na paleta).
     <div className="bg-white rounded-2xl p-3.5 border-2 border-dashed shadow-sm space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-extrabold text-rosa-800">📄 Enviar Exame / Documento (Sem Imagem)</span>
-        <span className="text-[10px] px-2 py-0.5 rounded bg-rosa-800 text-white font-bold">LGPD Strict</span>
+        <span className="text-xs font-extrabold text-rosa-800">🔬 Enviar Laudo ou Imagem de Exame</span>
+        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-700 text-white font-bold">LGPD Seguro</span>
       </div>
       <p className="text-[11px] text-gray-600 leading-snug">
-        Envie laudos em <strong>.PDF, .TXT ou .DOCX</strong>. A IA remove seu CPF/nome automaticamente e explica o
-        resultado em linguagem simples. <strong>Imagens (.jpg, .png, .dicom) são bloqueadas.</strong>
+        Envie laudos em <strong>PDF, TXT ou DOCX</strong> e imagens médicas (<strong>DICOM .dcm, JPG, PNG</strong>).
+        A Doutora Rosa higieniza dados pessoais automaticamente e analisa os aspectos descritivos do exame.
       </p>
 
       <div className="flex flex-col gap-2">
@@ -24,7 +23,7 @@ export default function ExamUploadBox() {
           htmlFor="inputExameUpload"
           className="cursor-pointer w-full py-2 px-3 rounded-xl bg-rosa-800 hover:bg-rosa-900 text-white font-bold text-xs text-center shadow transition"
         >
-          📎 Selecionar Documento (.PDF / .TXT / .DOCX)
+          📎 Selecionar Laudo ou Imagem (PDF / DICOM / Imagem)
         </label>
         <input
           id="inputExameUpload"
@@ -36,7 +35,7 @@ export default function ExamUploadBox() {
       </div>
 
       <div className="pt-1 border-t border-rosa-100 space-y-1.5">
-        <div className="text-[11px] font-semibold text-gray-700">Testar Análise de Laudos / Bloqueio LGPD em 1 clique:</div>
+        <div className="text-[11px] font-semibold text-gray-700">Testar Análise de Exames em 1 clique:</div>
         <div className="grid grid-cols-1 gap-1.5">
           <button
             id="btnSampleBirads2"
@@ -57,13 +56,13 @@ export default function ExamUploadBox() {
             📄 Simular Ultrassom Mamário BI-RADS 3 (Provavelmente Benigno)
           </button>
           <button
-            id="btnSampleImageBlocked"
+            id="btnSampleDicom"
             type="button"
-            data-sample-doc="image_blocked"
-            onClick={() => simulateSampleDocument('image_blocked')}
-            className="sample-doc-btn text-[11px] px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-900 border border-red-300 font-semibold text-left transition"
+            data-sample-doc="dicom_sample"
+            onClick={() => simulateSampleDocument('dicom_sample')}
+            className="sample-doc-btn text-[11px] px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 font-semibold text-left transition"
           >
-            🚫 Testar Tentativa de Envio de Foto `mamografia_foto.jpg` (Bloqueio LGPD)
+            🔬 Simular Imagem Médica DICOM (Mamografia Digital Desidentificada)
           </button>
         </div>
       </div>

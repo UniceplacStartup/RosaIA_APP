@@ -43,12 +43,13 @@ export default function TermsModal({ onClose, onAccept }: TermsModalProps) {
           <li>Não realiza consultas nem prescreve medicamentos ou tratamentos.</li>
         </ul>
         <p>
-          <strong>3. Proibição Estrita de Imagens e Proteção LGPD (Lei nº 13.709/2018):</strong>
+          <strong>3. Gestão e Validação Rigorosa de Imagens e Laudos (LGPD — Lei nº 13.709/2018):</strong>
         </p>
         <p>
-          Para proteger sua intimidade e seus dados sensíveis de saúde, o envio de fotografias ou imagens de exames é
-          bloqueado. O upload de documentos restringe-se a laudos textuais (.PDF, .TXT, .DOCX), cujos dados
-          identificadores (CPF, RG, e-mail) são anonimizados automaticamente antes da leitura pela IA.
+          Para proteger sua privacidade e seus dados sensíveis de saúde, o envio de laudos e exames (incluindo imagens médicas
+          DICOM e convencionais) passa por um processo rigoroso de validação e higienização automática. Qualquer dado identificador
+          pessoal (como nomes, CPFs ou registros) é expurgado antes da interpretação da IA, permitindo a análise exclusiva
+          dos aspectos descritivos do exame para esclarecimento de dúvidas.
         </p>
       </div>
       <div className="pt-3 border-t border-rosa-100 flex justify-end gap-2">

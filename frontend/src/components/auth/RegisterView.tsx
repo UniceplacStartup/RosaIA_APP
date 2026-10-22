@@ -2,7 +2,6 @@ import { useAuth } from '../../context/AuthContext';
 import type { RegisterFormController } from '../../hooks/useRegisterForm';
 import { toRuleItems } from '../../utils/passwordValidator';
 import { AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from './formStyles';
-import CpfCryptoPreview from './CpfCryptoPreview';
 import PasswordRequirementList from './PasswordRequirementList';
 
 interface RegisterViewProps {
@@ -12,10 +11,10 @@ interface RegisterViewProps {
 
 const REQUIRED = <span className="text-red-600">*</span>;
 
-/** Tela 03 — Cadastro seguro com CPF (Módulo 11), Blind Index LGPD e política de senha OWASP. */
+/** Tela 03 — Cadastro seguro de usuária com proteção LGPD. */
 export default function RegisterView({ form, onOpenTerms }: RegisterViewProps) {
   const { setAuthView } = useAuth();
-  const { values, requirements, cpfPreview, showPasswords } = form;
+  const { values, requirements, showPasswords } = form;
   const passwordType = showPasswords ? 'text' : 'password';
 
   return (
@@ -32,7 +31,7 @@ export default function RegisterView({ form, onOpenTerms }: RegisterViewProps) {
         </button>
       </div>
       <p className="text-xs text-gray-600">
-        Cadastro protegido pelos padrões <strong>OWASP Top 10</strong> e <strong>LGPD</strong>.
+        Seus dados são protegidos com total privacidade e sigilo (em conformidade com a LGPD).
       </p>
 
       <form id="formCadastro" className="space-y-3" noValidate onSubmit={form.submit}>
@@ -67,19 +66,9 @@ export default function RegisterView({ form, onOpenTerms }: RegisterViewProps) {
             />
           </div>
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="cadCpf" className="block text-xs font-semibold text-rosa-900">
-                CPF (Validado LGPD) {REQUIRED}
-              </label>
-              <button
-                id="btnGerarCpfTeste"
-                type="button"
-                onClick={form.generateTestCpf}
-                className="text-[11px] text-rosa-700 underline font-semibold"
-              >
-                Gerar CPF válido
-              </button>
-            </div>
+            <label htmlFor="cadCpf" className="block text-xs font-semibold text-rosa-900 mb-1">
+              CPF {REQUIRED}
+            </label>
             <input
               id="cadCpf"
               type="text"
@@ -93,13 +82,11 @@ export default function RegisterView({ form, onOpenTerms }: RegisterViewProps) {
           </div>
         </div>
 
-        {cpfPreview && <CpfCryptoPreview preview={cpfPreview} />}
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="flex items-center justify-between mb-1">
               <label htmlFor="cadSenha" className="block text-xs font-semibold text-rosa-900">
-                Senha (OWASP) {REQUIRED}
+                Senha {REQUIRED}
               </label>
               <button
                 id="btnToggleCadSenha"

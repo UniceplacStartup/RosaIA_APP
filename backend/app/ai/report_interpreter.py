@@ -4,7 +4,8 @@ from typing import Dict, Any, Optional
 from app.ai.prompts import (
     SYSTEM_PROMPT_REPORT_ANALYSIS,
     MANDATORY_MEDICAL_DISCLAIMER,
-    BIRADS_DESCRIPTIONS
+    BIRADS_DESCRIPTIONS,
+    clean_rosa_text
 )
 from app.ai.client import get_genai_client
 from app.core.config import settings
@@ -51,26 +52,31 @@ async def generate_educational_report_analysis(
     original_filename: str
 ) -> Dict[str, Any]:
     """
-    Realiza a interpretação acolhedora e pedagógica do laudo médico.
-    Garante que nunca haja diagnóstico, mas sim explicação clara dos termos e próximos passos.
+    Realiza a interpretação acolhedora e pedagógica do laudo médico ou imagem.
+    Retorna exclusivamente informações descritivas do laudo, sem dados pessoais,
+    permitindo que a usuária tire dúvidas de forma interativa.
+    Sem asteriscos (*) ou hashtags (#).
     """
     birads_cat = extract_birads_classification(sanitized_text)
     findings = extract_medical_findings(sanitized_text)
     
     birads_info = BIRADS_DESCRIPTIONS.get(
         birads_cat,
-        "Não foi possível identificar com clareza uma classificação BI-RADS padronizada (0 a 6) no texto fornecido."
+        "Não foi identificada uma categoria BI-RADS padronizada (0 a 6) de forma explícita no texto fornecido."
     )
 
     summary_text = ""
     next_steps = ""
 
     prompt = (
-        f"Analise o seguinte laudo de imagem mamária desidentificado da paciente:\n\n"
-        f"--- LAUDO ---\n{sanitized_text}\n--- FIM DO LAUDO ---\n\n"
+        f"Analise o seguinte laudo/exame de imagem mamária desidentificado da paciente:\n\n"
+        f"--- CONTEÚDO DESIDENTIFICADO ---\n{sanitized_text}\n--- FIM DO CONTEÚDO ---\n\n"
         f"Classificação prévia detectada: BI-RADS {birads_cat if birads_cat is not None else 'Indeterminada'}.\n"
-        f"Forneça uma tradução didática, amigável e acolhedora, explicando os termos técnicos encontrados, "
-        f"o significado da classificação e as orientações recomendadas para a consulta médica presencial."
+        f"Instruções:\n"
+        f"1. Retorne exclusivamente informações descritivas do laudo/exame, sem expor nenhum dado pessoal.\n"
+        f"2. Forneça uma tradução didática, amigável e acolhedora dos termos técnicos encontrados e da classificação.\n"
+        f"3. Convide a paciente a fazer perguntas e tirar dúvidas sobre os termos de forma interativa.\n"
+        f"4. NUNCA use asteriscos (*) ou hashtags (#)."
     )
 
     try:
@@ -86,14 +92,17 @@ async def generate_educational_report_analysis(
         logger.error("Erro ao invocar Gemini para análise de laudo: %s", exc)
 
     if not summary_text:
-        # Fallback determinístico caso o Gemini não esteja disponível
+        # Fallback determinístico humanizado, sem nenhum asterisco ou hashtag
+        birads_label = f"BI-RADS {birads_cat}" if birads_cat is not None else "Não categorizado"
         summary_text = (
-            f"Analisei o documento '{original_filename}'.\n\n"
-            f"**Classificação Encontrada:** BI-RADS {birads_cat if birads_cat is not None else 'Não categorizado'}\n"
+            f"Olá! Analisei com todo carinho as características descritivas do documento {original_filename}.\n\n"
+            f"Classificação Encontrada: {birads_label}\n"
             f"{birads_info}\n\n"
-            f"Lembre-se sempre de que cerca de 80% das alterações identificadas em exames de imagem mamária "
-            f"são completamente benignas (como cistos simples ou fibroadenomas). O exame de imagem é apenas uma "
-            f"etapa preventiva e deve ser levado ao seu médico mastologista ou ginecologista de confiança para correlação clínica."
+            f"Aspectos descritivos observados: O exame apresenta achados que foram registrados com segurança pela equipe técnica. "
+            f"Lembre-se sempre de que cerca de 80% das alterações identificadas em exames de imagem mamária são completamente benignas, "
+            f"como cistos simples ou fibroadenomas. O exame é uma ferramenta essencial de prevenção e cuidado.\n\n"
+            f"Fique totalmente à vontade para me perguntar qualquer termo ou dúvida que você queira esclarecer sobre este laudo! "
+            f"Estou aqui com você para conversarmos sobre cada detalhe com calma."
         )
 
     # Determinação de próximos passos
@@ -110,9 +119,13 @@ async def generate_educational_report_analysis(
     else:
         next_steps = "Apresente o laudo integral ao seu médico na próxima consulta para esclarecimento das condutas individualizadas."
 
-    # Injeção inquebrável do aviso legal médico (RNF13)
-    if MANDATORY_MEDICAL_DISCLAIMER not in summary_text:
-        summary_text += f"\n\n{MANDATORY_MEDICAL_DISCLAIMER}"
+    # Limpeza estrita de qualquer asterisco (*) ou hashtag (#)
+    summary_text = clean_rosa_text(summary_text)
+
+    # Injeção do aviso legal médico (RNF13) sem asteriscos
+    clean_disclaimer = clean_rosa_text(MANDATORY_MEDICAL_DISCLAIMER)
+    if clean_disclaimer not in summary_text:
+        summary_text += f"\n\n{clean_disclaimer}"
 
     return {
         "birads_category": birads_cat,
@@ -120,5 +133,5 @@ async def generate_educational_report_analysis(
         "findings": findings,
         "educational_summary": summary_text,
         "recommended_next_steps": next_steps,
-        "disclaimer": MANDATORY_MEDICAL_DISCLAIMER
+        "disclaimer": clean_disclaimer
     }

@@ -47,8 +47,8 @@ export default function ProfileSection() {
         <div className="space-y-2 text-xs bg-rosa-50 p-4 rounded-2xl border border-rosa-200">
           <div className="font-bold text-rosa-900">Direitos do Titular de Dados (Art. 18 da LGPD — Lei nº 13.709/2018)</div>
           <p className="text-gray-700">
-            Seus dados sensíveis de saúde são anonimizados antes do processamento pela IA e seu CPF é armazenado apenas
-            como hash HMAC-SHA256 e cifra AES-256.
+            Seus dados sensíveis de saúde são anonimizados antes do processamento pela IA e seu CPF e informações
+            pessoais são armazenados com rigorosa criptografia de ponta a ponta e sigilo absoluto.
           </p>
         </div>
 

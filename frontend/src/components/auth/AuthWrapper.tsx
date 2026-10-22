@@ -12,16 +12,16 @@ import WelcomeView from './WelcomeView';
 
 const SECURITY_PILLARS: ReadonlyArray<{ title: string; text: string }> = [
   {
-    title: 'Apoio Psicológico Embasado:',
-    text: 'Mensagens empáticas reforçando que o câncer de mama tem tratamento e altas taxas de cura.',
+    title: 'Apoio Psicológico e Humanizado:',
+    text: 'Acolhimento empático com informações claras e esperançosas sobre a saúde da mama.',
   },
   {
-    title: 'Padrão OWASP Top 10:',
-    text: 'Senha forte, proteção contra força bruta, CPF com Blind Index SHA-256 + AES-256.',
+    title: 'Privacidade e Segurança Total:',
+    text: 'Seus dados e acessos são protegidos com sigilo rigoroso em conformidade com a LGPD.',
   },
   {
-    title: 'Proteção LGPD de Exames:',
-    text: 'Imagens médicas são estritamente proibidas; apenas laudos em PDF/texto anonimizados são analisados.',
+    title: 'Análise Segura de Laudos e Imagens:',
+    text: 'Interpretação educativa de laudos e exames (incluindo imagens DICOM e convencionais) com higienização de dados pessoais.',
   },
 ];
 

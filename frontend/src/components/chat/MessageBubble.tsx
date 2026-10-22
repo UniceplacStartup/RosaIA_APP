@@ -1,28 +1,22 @@
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ChatMessage } from '../../types/chat';
 import { useChat } from '../../context/ChatContext';
+import { cleanRosaFormatting } from '../../utils/triageClassifier';
 
 interface MessageBubbleProps {
   message: ChatMessage;
 }
 
-const INLINE_MARKDOWN = /(\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g;
-
 /**
- * Renderiza o subconjunto de markdown usado pela Doutora Rosa (**negrito** e *itálico*)
- * como elementos React — sem `dangerouslySetInnerHTML`, evitando XSS em texto de usuária/IA.
+ * Renderiza texto limpo e humanizado para a Doutora Rosa (sem asteriscos ou hashtags),
+ * preservando parágrafos e segurança contra injeção de HTML.
  */
-function renderInlineMarkdown(text: string): ReactNode[] {
-  return text.split(INLINE_MARKDOWN).map((part, index) => {
-    if (part.length > 4 && part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    }
-    if (part.length > 2 && part.startsWith('*') && part.endsWith('*')) {
-      return <em key={index}>{part.slice(1, -1)}</em>;
-    }
-    return <Fragment key={index}>{part}</Fragment>;
-  });
+function renderCleanText(text: string, isUser: boolean): ReactNode {
+  if (isUser) {
+    return text;
+  }
+  return cleanRosaFormatting(text);
 }
 
 /** Balão estilizado: usuária (à direita, rosa escuro) vs. Doutora Rosa (à esquerda, branco com feedback). */
@@ -91,7 +85,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         )}
 
-        <div className="leading-relaxed whitespace-pre-line">{renderInlineMarkdown(message.text)}</div>
+        <div className="leading-relaxed whitespace-pre-line">{renderCleanText(message.text, isUser)}</div>
 
         {/* Rodapé: Horário + Ações de Feedback da Resposta */}
         <div className={`flex items-center justify-between pt-1 text-[10px] ${isUser ? 'text-rosa-200 justify-end' : 'text-gray-400'}`}>

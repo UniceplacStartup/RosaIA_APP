@@ -8,7 +8,7 @@ import TypingIndicator from './TypingIndicator';
 
 /** Janela principal estilo WhatsApp: histórico cronológico por data, digitação, erro/retry e entrada de texto. */
 export default function ChatWindow() {
-  const { messages, isTyping, isUsingGemini, errorBannerText, jumpRequest, retryLastMessage } = useChat();
+  const { messages, isTyping, errorBannerText, jumpRequest, retryLastMessage } = useChat();
   const scrollRef = useRef<HTMLDivElement>(null);
   const handledJumpNonce = useRef(jumpRequest?.nonce);
 
@@ -47,16 +47,17 @@ export default function ChatWindow() {
           <div>
             <h2 className="font-bold text-sm text-rosa-900">Doutora Rosa • Assistente Virtual RosaIA</h2>
             <p id="chatStatusSubtitle" className="text-[11px] text-emerald-700 font-medium">
-              Online • Respostas baseadas no INCA, Ministério da Saúde e artigos UNICEPLAC
+              Online
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span
             id="aiModeIndicator"
-            className="text-[11px] px-2.5 py-1 rounded-full bg-rosa-100 text-rosa-800 font-semibold"
+            className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200 flex items-center gap-1.5"
           >
-            {isUsingGemini ? 'IA: Google Gemini API (Live)' : 'IA: Motor Clínico-Empático RAG'}
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Atendimento Seguro
           </span>
         </div>
       </div>

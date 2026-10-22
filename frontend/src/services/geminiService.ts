@@ -1,10 +1,11 @@
 import type { AssistantReply } from '../types/chat';
+import { cleanRosaFormatting } from '../utils/triageClassifier';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const SYSTEM_PROMPT =
-  'Você é a Doutora Rosa do RosaIA APP (UNICEPLAC). Responda em português de forma acolhedora, empática, clara, reforçando que o câncer de mama tem tratamento e altas chances de cura na detecção precoce, e lembre que não substitui consulta médica. Mensagem da usuária: ';
+  'Você é a Doutora Rosa do RosaIA APP (UNICEPLAC). Responda em português com extremo calor humano, acolhimento, empatia, sinceridade e clareza. Reforce que alterações nas mamas são majoritariamente benignas (cerca de 80%) e que o câncer de mama tem altas taxas de cura (>95%) na detecção precoce. Lembre sempre que você não substitui uma consulta médica presencial. REGRA ESTRITA DE FORMATAÇÃO: NUNCA use asteriscos (*) nem hashtags (#). Mensagem da usuária: ';
 
 interface GeminiGenerateResponse {
   candidates?: Array<{
@@ -26,6 +27,7 @@ export function isGeminiKeyUsable(apiKey: string): boolean {
  * Retorna `null` em qualquer falha (rede, cota, chave inválida) para que o
  * chamador use o motor RAG local como contingência.
  * A chave é enviada via cabeçalho (nunca na URL).
+ * Limpa asteriscos e hashtags da resposta.
  */
 export async function askGemini(apiKey: string, userText: string): Promise<AssistantReply | null> {
   try {
@@ -43,7 +45,7 @@ export async function askGemini(apiKey: string, userText: string): Promise<Assis
 
     const data = (await response.json()) as GeminiGenerateResponse;
     const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return aiText ? { emotionTag: 'Gemini API Live • Doutora Rosa', text: aiText } : null;
+    return aiText ? { emotionTag: 'Gemini API Live • Doutora Rosa', text: cleanRosaFormatting(aiText) } : null;
   } catch {
     return null;
   }

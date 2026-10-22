@@ -46,14 +46,14 @@ export interface AssistantReply {
   monitorUpdate?: Partial<EmotionMonitorState>;
 }
 
-export type SampleDocumentKind = 'birads2' | 'birads3' | 'image_blocked';
+export type SampleDocumentKind = 'birads2' | 'birads3' | 'dicom_sample';
 
 export interface UploadedDocument {
   name: string;
   anonymizedPreview: string;
 }
 
-export type ExamRejectionReason = 'image_blocked' | 'unsupported_extension';
+export type ExamRejectionReason = 'file_too_large' | 'unsupported_extension';
 
 export type ExamValidationResult =
   | { ok: true }

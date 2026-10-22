@@ -25,7 +25,7 @@ export default function AppHeader() {
             </span>
           </div>
           <p className="text-[11px] text-rosa-200 mt-0.5">
-            Apoio Informativo, Emocional e Análise Educativa de Exames (Sem Imagens)
+            Apoio Informativo, Emocional e Análise Educativa de Exames e Imagens
           </p>
         </div>
       </div>

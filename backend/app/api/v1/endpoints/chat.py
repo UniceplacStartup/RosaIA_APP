@@ -24,7 +24,7 @@ from app.schemas.chat import (
 from app.services.lgpd_service import anonymize_medical_text
 from app.ai.emotion_analyzer import classify_emotion
 from app.ai.rag_engine import retrieve_relevant_medical_context, format_rag_context_for_prompt
-from app.ai.prompts import SYSTEM_PROMPT_DOUTORA_ROSA, MANDATORY_MEDICAL_DISCLAIMER
+from app.ai.prompts import SYSTEM_PROMPT_DOUTORA_ROSA, MANDATORY_MEDICAL_DISCLAIMER, clean_rosa_text
 from app.ai.client import generate_text_embedding
 from app.ai import llm, safety, monitoring
 from app.core.config import settings
@@ -223,6 +223,23 @@ async def send_message(
         f"[SINALIZADOR EMOCIONAL: Apoio Psicológico Ativado={emotion['psychological_support_triggered']}, "
         f"Grau de Ansiedade={emotion['sentiment']}]"
     )
+
+    # Diretiva especial para triagem e memória contextual
+    is_triage_msg = "triagem de atenção mamária" in sanitized_user_message.lower() or "resultado da triagem" in sanitized_user_message.lower()
+    if is_triage_msg:
+        current_prompt_parts.append(
+            "[DIRETIVA DE TRIAGEM: A usuária está submetendo sua Triagem de Atenção Mamária. "
+            "Responda com calor humano, empatia e de forma altamente específica baseando-se nas informações desta triagem. "
+            "Se a usuária fizer perguntas ou mencionar tópicos conversados antes da triagem, integre e lembre perfeitamente dos contextos anteriores. "
+            "NUNCA utilize asteriscos (*) ou hashtags (#) em sua resposta.]"
+        )
+    else:
+        current_prompt_parts.append(
+            "[DIRETIVA DE RESPOSTA E MEMÓRIA: Mantenha gerenciamento completo da memória contextual. "
+            "Se a paciente mencionar assuntos passados (como exames anteriores, laudos ou triagens), "
+            "lembre, correlacione e gerencie múltiplos contextos perfeitamente. NUNCA utilize asteriscos (*) ou hashtags (#).]"
+        )
+
     if urgency.prompt_directive:
         current_prompt_parts.append(urgency.prompt_directive)
     current_prompt_parts.append(f"Pergunta da Paciente: {sanitized_user_message}")
@@ -283,6 +300,9 @@ async def send_message(
     # 10. Garantia incondicional do aviso médico obrigatório (RNF13)
     if MANDATORY_MEDICAL_DISCLAIMER not in assistant_reply:
         assistant_reply = f"{assistant_reply}\n\n{MANDATORY_MEDICAL_DISCLAIMER}"
+
+    # 11. Padronização estrita de formatação da Doutora Rosa (remoção de * e #)
+    assistant_reply = clean_rosa_text(assistant_reply)
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
 

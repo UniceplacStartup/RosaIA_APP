@@ -19,8 +19,7 @@ export default function PasswordResetView() {
     <section id="authViewRecuperar" className="space-y-4">
       <h2 className="text-2xl font-extrabold text-rosa-800">Recuperação de Senha</h2>
       <p className="text-xs text-gray-600 leading-relaxed">
-        Informe o e-mail cadastrado. Por segurança (OWASP A07 - Prevenção de Enumeração de Contas), exibimos sempre a
-        mensagem padrão.
+        Informe o e-mail cadastrado para receber as instruções de recuperação de senha.
       </p>
 
       <form id="formRecuperar" className="space-y-3" noValidate onSubmit={handleSubmit}>

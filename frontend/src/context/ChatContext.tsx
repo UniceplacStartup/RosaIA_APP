@@ -8,7 +8,7 @@ import type {
   SampleDocumentKind,
 } from '../types/chat';
 import { INITIAL_MESSAGES } from '../data/seedData';
-import { SAMPLE_DOCUMENTS, SIMULATED_IMAGE_BLOCK } from '../data/sampleDocuments';
+import { SAMPLE_DOCUMENTS } from '../data/sampleDocuments';
 import { askGemini, isGeminiKeyUsable } from '../services/geminiService';
 import { generateLocalDoutoraRosaResponse } from '../services/ragEngine';
 import { buildAnonymizedPreview } from '../utils/anonymizer';
@@ -16,6 +16,8 @@ import { validateExamFile } from '../utils/examFileValidator';
 import { formatClockTime } from '../utils/format';
 import { safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
 import { api, getStoredToken } from '../services/api';
+import type { TriageInput } from '../types/triage';
+import { AGE_RANGE_OPTIONS, cleanRosaFormatting, generateTriageDoctorResponse } from '../utils/triageClassifier';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
@@ -49,6 +51,7 @@ interface ChatContextValue {
   errorBannerText: string | null;
   jumpRequest: JumpRequest | null;
   sendMessage: (text: string, docAttachment?: string | null) => Promise<void>;
+  submitTriageToChat: (input: TriageInput) => void;
   retryLastMessage: () => void;
   toggleOfflineSimulation: () => void;
   uploadExamFile: (file: File) => Promise<void>;
@@ -278,7 +281,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         time: formatClockTime(),
         sender: 'doutora_rosa',
         emotionTag: reply.emotionTag,
-        text: reply.text,
+        text: cleanRosaFormatting(reply.text),
         aiModel: apiModelInfo,
         usedFallback: apiUsedFallback,
         urgencyLevel: apiUrgencyLevel,
@@ -341,16 +344,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const validation = await validateExamFile(file);
 
       if (!validation.ok) {
-        if (validation.reason === 'image_blocked') {
+        if (validation.reason === 'file_too_large') {
           showToast(
-            '🚫 Formato Não Permitido',
-            `O arquivo "${file.name}" não pôde ser recebido. Por proteção à sua privacidade, fotos e imagens de exames não são aceitas. Envie apenas laudos em documento (PDF, TXT ou DOC).`,
+            'Arquivo Muito Grande',
+            `O arquivo "${file.name}" excede o tamanho máximo de 15 MB permitido para laudos e exames de imagem.`,
             'error',
           );
         } else {
           showToast(
             'Formato Não Permitido',
-            `O arquivo "${file.name}" não é um laudo textual aceito. Envie apenas documentos .pdf, .txt, .doc ou .docx.`,
+            `O arquivo "${file.name}" não é suportado. Envie laudos em PDF, TXT ou DOCX, ou exames de imagem em DICOM (.dcm), JPG, PNG, WEBP ou TIFF.`,
             'error',
           );
         }
@@ -358,23 +361,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       let rawContent = '';
-      try {
-        rawContent = await file.text();
-      } catch {
-        rawContent = '';
+      const isTextualDoc = /\.(pdf|txt|doc|docx)$/i.test(file.name);
+      if (isTextualDoc) {
+        try {
+          rawContent = await file.text();
+        } catch {
+          rawContent = '';
+        }
       }
-      const preview = buildAnonymizedPreview(rawContent);
+      const preview = isTextualDoc ? buildAnonymizedPreview(rawContent) : 'Exame de imagem recebido com higienização de dados pessoais.';
 
       const token = getStoredToken();
       if (token && !offlineRef.current) {
         try {
-          showToast('Analisando Laudo...', 'Processando documento na API com salvaguardas LGPD...', 'info');
+          showToast('Analisando Exame...', 'Processando documento e protegendo dados pessoais...', 'info');
           const uploadRes = await api.upload.uploadDocument(file);
-          showToast('📄 Documento Analisado', 'Laudo processado com sucesso pela Doutora Rosa!', 'success');
+          showToast('🔬 Exame Analisado', 'Laudo processado com sucesso pela Doutora Rosa!', 'success');
 
           const explanation = uploadRes.ai_educational_analysis
-            ? `Doutora Rosa, enviei meu exame (${file.name}). Análise educativa do laudo: ${uploadRes.ai_educational_analysis}`
-            : `Doutora Rosa, enviei meu laudo (${file.name}). Trecho anonimizado: "${uploadRes.anonymized_preview || preview}". Pode me explicar com calma?`;
+            ? `Doutora Rosa, enviei meu exame (${file.name}). Análise descritiva do laudo: ${uploadRes.ai_educational_analysis}. Gostaria de tirar algumas dúvidas com você sobre o que isso significa.`
+            : `Doutora Rosa, enviei meu exame (${file.name}). Trecho descritivo desidentificado: "${uploadRes.anonymized_preview || preview}". Gostaria de conversar com você sobre esses termos.`;
 
           await sendMessage(explanation, file.name);
           return;
@@ -383,9 +389,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      showToast('📄 Documento Anonimizado (LGPD)', 'CPF e dados pessoais removidos antes da leitura pela IA.', 'success');
+      showToast('🔬 Exame Processado (LGPD)', 'Dados pessoais protegidos. Análise descritiva pronta para conversa.', 'success');
       await sendMessage(
-        `Doutora Rosa, enviei meu documento de exame (${file.name}). Trecho anonimizado: "${preview || 'Laudo anexado para leitura educativa'}". Pode me explicar os termos com calma?`,
+        `Doutora Rosa, enviei meu exame (${file.name}). Descrição desidentificada: "${preview || 'Exame de imagem mamária anexado para leitura educativa'}". Pode me explicar os achados descritivos com calma para que eu tire minhas dúvidas?`,
         file.name,
       );
     },
@@ -394,15 +400,55 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const simulateSampleDocument = useCallback(
     (kind: SampleDocumentKind) => {
-      if (kind === 'image_blocked') {
-        showToast(SIMULATED_IMAGE_BLOCK.toastTitle, SIMULATED_IMAGE_BLOCK.toastMessage, 'error');
-        return;
-      }
       const scenario = SAMPLE_DOCUMENTS[kind];
+      if (!scenario) return;
       showToast(scenario.toastTitle, scenario.toastMessage, 'success');
       void sendMessage(scenario.userMessage, scenario.fileName);
     },
     [sendMessage, showToast],
+  );
+
+  const submitTriageToChat = useCallback(
+    (input: TriageInput) => {
+      const symptomsText = input.symptoms.length > 0 ? input.symptoms.join(', ') : 'Nenhum sintoma observado';
+      const ageLabel = AGE_RANGE_OPTIONS.find((o) => o.value === input.ageRange)?.label || input.ageRange;
+      const familyText = input.familyHistory === 'sim' ? 'Sim (Mãe, irmã ou filha)' : 'Não';
+      const userMessageText = `Doutora Rosa, realizei minha Triagem de Atenção Mamária no aplicativo com os seguintes dados:\n• Faixa Etária: ${ageLabel}\n• Histórico Familiar de 1º Grau: ${familyText}\n• Sinais ou Sintomas Relatados: ${symptomsText}\n\nGostaria da sua avaliação acolhedora e personalizada sobre o meu caso.`;
+
+      const userMsg: ChatMessage = {
+        id: makeMessageId('u'),
+        dateGroup: 'Hoje',
+        time: formatClockTime(),
+        sender: 'user',
+        text: userMessageText,
+      };
+
+      const doctorReplyText = cleanRosaFormatting(generateTriageDoctorResponse(input));
+      const doctorMsg: ChatMessage = {
+        id: makeMessageId('r'),
+        dateGroup: 'Hoje',
+        time: formatClockTime(),
+        sender: 'doutora_rosa',
+        emotionTag: 'Acolhimento da Triagem • Doutora Rosa',
+        text: doctorReplyText,
+      };
+
+      commitMessages([...messagesRef.current, userMsg, doctorMsg]);
+
+      // Tenta registrar na API em segundo plano se autenticado
+      const token = getStoredToken();
+      if (token && !offlineRef.current) {
+        api.triage
+          .assess({
+            age_range: input.ageRange,
+            has_family_history: input.familyHistory === 'sim',
+            reported_signs: input.symptoms,
+            emotional_impact_level: input.symptoms.length > 0 ? 3 : 1,
+          })
+          .catch(() => {});
+      }
+    },
+    [commitMessages],
   );
 
   const appendAssistantMessage = useCallback(
@@ -413,7 +459,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         time: formatClockTime(),
         sender: 'doutora_rosa',
         emotionTag,
-        text,
+        text: cleanRosaFormatting(text),
       });
     },
     [pushMessage],
@@ -452,6 +498,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       errorBannerText,
       jumpRequest,
       sendMessage,
+      submitTriageToChat,
       retryLastMessage,
       toggleOfflineSimulation,
       uploadExamFile,
@@ -464,8 +511,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }),
     [
       messages, isTyping, emotionMonitor, geminiApiKey, simulateOffline, errorBannerText, jumpRequest,
-      sendMessage, retryLastMessage, toggleOfflineSimulation, uploadExamFile, simulateSampleDocument,
-      appendAssistantMessage, jumpToDate, saveGeminiKey, clearGeminiKey, submitFeedback,
+      sendMessage, submitTriageToChat, retryLastMessage, toggleOfflineSimulation, uploadExamFile, simulateSampleDocument,
+      appendAssistantMessage, jumpToDate, saveGeminiKey, clearGeminiKey, submitFeedback
     ],
   );
 

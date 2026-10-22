@@ -87,17 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cpfHash: apiUser.cpf_hash || apiUser.cpfHash || '',
         };
 
-        enterApp(loggedUser, 'Sessão autenticada via API com persistência no banco Neon!');
+        enterApp(loggedUser, 'Sessão iniciada com sucesso!');
         return true;
       } catch (err: unknown) {
         if (err instanceof ApiError && err.status === 0) {
           if (cleanIdentifier.toLowerCase() === DEMO_USER.email.toLowerCase() && password === DEMO_PASSWORD) {
-            enterApp(DEMO_USER, 'Modo Demonstração (Backend offline). Histórico simulado ativo.');
+            enterApp(DEMO_USER, 'Bem-vinda! Modo demonstração ativo.');
             return true;
           }
           showToast(
-            'Servidor Backend Offline',
-            'Não foi possível conectar à API em http://localhost:8000. Inicie o servidor FastAPI.',
+            'Servidor Indisponível',
+            'Não foi possível conectar ao servidor de atendimento. Tente novamente em instantes.',
             'error'
           );
           return false;
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const msg =
           err instanceof ApiError
             ? err.message
-            : 'Credenciais inválidas ou conta bloqueada temporariamente por segurança.';
+            : 'Credenciais inválidas ou conta temporariamente bloqueada por segurança.';
         showToast('Falha no Login', msg, 'error');
         return false;
       }
@@ -149,14 +149,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         enterApp(
           newUser,
-          'Cadastro realizado com sucesso na API e registrado no banco Neon com Blind Index!',
+          'Cadastro realizado com sucesso! Seja bem-vinda ao RosaIA.',
         );
         return true;
       } catch (err: unknown) {
         if (err instanceof ApiError && err.status === 0) {
           showToast(
-            'Servidor Backend Offline',
-            'Não foi possível salvar a conta no banco Neon porque o backend FastAPI não está respondendo na porta 8000.',
+            'Servidor Indisponível',
+            'Não foi possível conectar ao servidor no momento. Verifique sua conexão e tente novamente.',
             'error'
           );
           return false;

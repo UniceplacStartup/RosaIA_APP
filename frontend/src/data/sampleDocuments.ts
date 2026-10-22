@@ -1,21 +1,21 @@
 import type { SampleDocumentKind } from '../types/chat';
 
 export interface SampleDocumentScenario {
-  kind: Exclude<SampleDocumentKind, 'image_blocked'>;
+  kind: SampleDocumentKind;
   toastTitle: string;
   toastMessage: string;
   userMessage: string;
   fileName: string;
 }
 
-/** Laudos simulados (1 clique) para testar a análise educativa com anonimização. */
-export const SAMPLE_DOCUMENTS: Record<Exclude<SampleDocumentKind, 'image_blocked'>, SampleDocumentScenario> = {
+/** Laudos e exames simulados (1 clique) para testar a análise educativa e interativa. */
+export const SAMPLE_DOCUMENTS: Record<SampleDocumentKind, SampleDocumentScenario> = {
   birads2: {
     kind: 'birads2',
     toastTitle: '📄 Laudo Preparado com Privacidade',
     toastMessage: 'Dados pessoais anonimizados antes do envio para a Doutora Rosa.',
     userMessage:
-      'Doutora Rosa, anexei meu laudo de Mamografia Digital: "Paciente: [ANONIMIZADO_LGPD], CPF: [CPF_OCULTO_LGPD]. Mamas simétricas, calcificações tipicamente benignas esparsas. Conclusão: Categoria BI-RADS 2." O que isso significa?',
+      'Doutora Rosa, anexei meu laudo de Mamografia Digital: "Paciente: [DADOS_PESSOAIS_OCULTOS]. Mamas simétricas, tecido fibroglandular usual, calcificações tipicamente benignas esparsas. Conclusão: Categoria BI-RADS 2." O que isso significa?',
     fileName: 'laudo_mamografia_birads2.pdf',
   },
   birads3: {
@@ -26,13 +26,15 @@ export const SAMPLE_DOCUMENTS: Record<Exclude<SampleDocumentKind, 'image_blocked
       'Doutora Rosa, anexei meu laudo de Ultrassonografia Mamária: "Nódulo ovalado, circunscrito, paralelo à pele no QSE da mama direita, medindo 0,8 cm. Conclusão: Achado provavelmente benigno — Categoria BI-RADS 3. Controle em 6 meses." Devo ficar preocupada?',
     fileName: 'laudo_ultrassom_birads3.pdf',
   },
+  dicom_sample: {
+    kind: 'dicom_sample',
+    toastTitle: '🔬 Exame de Imagem DICOM Processado',
+    toastMessage: 'Metadados desidentificados. Informações descritivas enviadas à Doutora Rosa.',
+    userMessage:
+      'Doutora Rosa, acabei de anexar uma imagem médica em formato DICOM (mamografia_digital_dcm01.dcm). Os dados de identificação foram higienizados. Você pode me explicar os achados descritivos da imagem e tirar minhas dúvidas?',
+    fileName: 'mamografia_digital_dcm01.dcm',
+  },
 };
-
-export const SIMULATED_IMAGE_BLOCK = {
-  toastTitle: '🚫 Formato de Arquivo Não Permitido',
-  toastMessage:
-    'Por proteção à sua privacidade, não recebemos fotos ou imagens de exames. Envie apenas o texto ou documento em PDF do laudo.',
-} as const;
 
 export const QUICK_PROMPTS: ReadonlyArray<{ label: string; message: string }> = [
   {
