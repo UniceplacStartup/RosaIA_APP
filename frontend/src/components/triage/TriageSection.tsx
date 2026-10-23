@@ -43,36 +43,36 @@ const RESULT_TONE: Record<RiskLevel, string> = {
 };
 
 interface StoredTriageState {
-  ageRange: AgeRange;
-  familyHistory: FamilyHistory;
+  ageRange: AgeRange | '';
+  familyHistory: FamilyHistory | '';
   symptoms: string[];
-  symptomSide: SymptomSide;
-  symptomDuration: SymptomDuration;
-  pregnancyBreastfeeding: PregnancyStatus;
-  hormonesMeds: HormonesStatus;
-  menopause: MenopauseStatus;
-  radiotherapy: RadiotherapyStatus;
-  smoking: SmokingFrequency;
-  alcohol: AlcoholFrequency;
-  physicalActivity: PhysicalActivityFrequency;
-  medicalFollowup: MedicalFollowupStatus;
+  symptomSide: SymptomSide | '';
+  symptomDuration: SymptomDuration | '';
+  pregnancyBreastfeeding: PregnancyStatus | '';
+  hormonesMeds: HormonesStatus | '';
+  menopause: MenopauseStatus | '';
+  radiotherapy: RadiotherapyStatus | '';
+  smoking: SmokingFrequency | '';
+  alcohol: AlcoholFrequency | '';
+  physicalActivity: PhysicalActivityFrequency | '';
+  medicalFollowup: MedicalFollowupStatus | '';
   assessment: TriageAssessment | null;
 }
 
 const DEFAULT_STATE: StoredTriageState = {
-  ageRange: '50_69',
-  familyHistory: 'nao',
+  ageRange: '',
+  familyHistory: '',
   symptoms: [],
-  symptomSide: 'Prefiro não informar',
-  symptomDuration: 'Prefiro não informar',
-  pregnancyBreastfeeding: 'Prefiro não informar',
-  hormonesMeds: 'Prefiro não informar',
-  menopause: 'Prefiro não informar',
-  radiotherapy: 'Prefiro não informar',
-  smoking: 'Prefiro não informar',
-  alcohol: 'Prefiro não informar',
-  physicalActivity: 'Prefiro não informar',
-  medicalFollowup: 'Prefiro não informar',
+  symptomSide: '',
+  symptomDuration: '',
+  pregnancyBreastfeeding: '',
+  hormonesMeds: '',
+  menopause: '',
+  radiotherapy: '',
+  smoking: '',
+  alcohol: '',
+  physicalActivity: '',
+  medicalFollowup: '',
   assessment: null,
 };
 
@@ -141,22 +141,33 @@ export default function TriageSection() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!state.ageRange) {
+      showToast('Faixa Etária', 'Por favor, selecione sua faixa etária para prosseguir com a triagem.', 'warning');
+      return;
+    }
+
+    if (state.symptoms.length === 0) {
+      showToast('Sinais e Sintomas', 'Por favor, assinale as alterações observadas ou marque a opção "Nenhum sintoma".', 'warning');
+      return;
+    }
+
     const input: TriageInput = {
       ageRange: state.ageRange,
-      familyHistory: state.familyHistory,
+      familyHistory: (state.familyHistory || 'prefiro_nao_informar') as FamilyHistory,
       symptoms: state.symptoms,
-      symptomSide: hasSpecificSymptoms ? state.symptomSide : undefined,
-      symptomDuration: hasSpecificSymptoms ? state.symptomDuration : undefined,
-      pregnancyBreastfeeding: state.pregnancyBreastfeeding,
-      hormonesMeds: state.hormonesMeds,
-      menopause: state.menopause,
-      radiotherapy: state.radiotherapy,
+      symptomSide: hasSpecificSymptoms ? ((state.symptomSide || 'Prefiro não informar') as SymptomSide) : undefined,
+      symptomDuration: hasSpecificSymptoms ? ((state.symptomDuration || 'Prefiro não informar') as SymptomDuration) : undefined,
+      pregnancyBreastfeeding: (state.pregnancyBreastfeeding || 'Prefiro não informar') as PregnancyStatus,
+      hormonesMeds: (state.hormonesMeds || 'Prefiro não informar') as HormonesStatus,
+      menopause: (state.menopause || 'Prefiro não informar') as MenopauseStatus,
+      radiotherapy: (state.radiotherapy || 'Prefiro não informar') as RadiotherapyStatus,
       lifestyle: {
-        smoking: state.smoking,
-        alcohol: state.alcohol,
-        physicalActivity: state.physicalActivity,
+        smoking: (state.smoking || 'Prefiro não informar') as SmokingFrequency,
+        alcohol: (state.alcohol || 'Prefiro não informar') as AlcoholFrequency,
+        physicalActivity: (state.physicalActivity || 'Prefiro não informar') as PhysicalActivityFrequency,
       },
-      medicalFollowup: state.medicalFollowup,
+      medicalFollowup: (state.medicalFollowup || 'Prefiro não informar') as MedicalFollowupStatus,
     };
 
     const result = classifyTriage(input);
@@ -218,6 +229,9 @@ export default function TriageSection() {
             onChange={(e) => updateState((prev) => ({ ...prev, ageRange: e.target.value as AgeRange }))}
             className="w-full px-3 py-2 rounded-xl border border-rosa-300 text-xs bg-white font-medium focus:ring-2 focus:ring-rosa-500 outline-none"
           >
+            <option value="" disabled>
+              Selecione sua faixa etária...
+            </option>
             {AGE_RANGE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -299,6 +313,9 @@ export default function TriageSection() {
                     onChange={(e) => updateState((prev) => ({ ...prev, symptomSide: e.target.value as SymptomSide }))}
                     className="w-full px-2.5 py-1.5 rounded-lg border border-rosa-300 text-xs bg-white"
                   >
+                    <option value="" disabled>
+                      Selecione o lado afetado...
+                    </option>
                     {SYMPTOM_SIDE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
@@ -319,6 +336,9 @@ export default function TriageSection() {
                     }
                     className="w-full px-2.5 py-1.5 rounded-lg border border-rosa-300 text-xs bg-white"
                   >
+                    <option value="" disabled>
+                      Selecione o tempo observado...
+                    </option>
                     {SYMPTOM_DURATION_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
@@ -441,6 +461,9 @@ export default function TriageSection() {
                   onChange={(e) => updateState((prev) => ({ ...prev, smoking: e.target.value as SmokingFrequency }))}
                   className="w-full px-2 py-1.5 rounded-lg border border-rosa-300 bg-white text-xs"
                 >
+                  <option value="" disabled>
+                    Selecione...
+                  </option>
                   <option value="Não fumo">Não fumo</option>
                   <option value="Ocasionalmente">Ocasionalmente</option>
                   <option value="Diariamente">Diariamente</option>
@@ -459,6 +482,9 @@ export default function TriageSection() {
                   onChange={(e) => updateState((prev) => ({ ...prev, alcohol: e.target.value as AlcoholFrequency }))}
                   className="w-full px-2 py-1.5 rounded-lg border border-rosa-300 bg-white text-xs"
                 >
+                  <option value="" disabled>
+                    Selecione...
+                  </option>
                   <option value="Não consumo">Não consumo</option>
                   <option value="Socialmente (finais de semana)">Socialmente</option>
                   <option value="Frequente">Frequente</option>
@@ -478,6 +504,9 @@ export default function TriageSection() {
                   }
                   className="w-full px-2 py-1.5 rounded-lg border border-rosa-300 bg-white text-xs"
                 >
+                  <option value="" disabled>
+                    Selecione...
+                  </option>
                   <option value="Sedentária">Sedentária</option>
                   <option value="1 a 2 vezes por semana">1 a 2 vezes/semana</option>
                   <option value="3 ou mais vezes por semana">3 ou mais vezes/semana</option>
