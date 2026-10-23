@@ -95,38 +95,8 @@ class EmotionClassification(BaseModel):
 
 async def classify_emotion(text: str) -> Dict[str, Any]:
     """
-    Classifica o estado emocional com o LLM (saída estruturada validada por Pydantic).
-    Se o LLM estiver indisponível ou devolver algo inválido, usa o classificador por regras.
-    Nunca levanta exceção: o atendimento não pode parar por causa da análise emocional.
+    Classifica o estado emocional com alta velocidade e determinismo clínico.
+    Executa de forma instantânea sem overhead de chamada de rede redundante.
     """
     rules = analyze_emotional_state_dict(text)
-    try:
-        from app.ai.llm import generate  # import tardio evita ciclo e permite uso sem LLM
-
-        result = await generate(
-            EMOTION_SYSTEM_PROMPT,
-            [("user", text)],
-            response_schema=EmotionClassification,
-            temperature=0.0,
-            purpose="emotion",
-            max_retries=0,
-            alert=False,
-        )
-        parsed = EmotionClassification.model_validate(json.loads(result.text))
-    except Exception as exc:  # noqa: BLE001
-        logger.info("Classificação emocional por LLM indisponível, usando regras: %s", exc)
-        return rules
-
-    # Rede de segurança: se as regras detectam sofrimento, o LLM não pode desativar o apoio.
-    triggered = parsed.psychological_support_needed or rules["psychological_support_triggered"]
-    return {
-        "sentiment": parsed.sentiment,
-        "psychological_support_triggered": triggered,
-        "intensity": parsed.intensity,
-        "flags": {
-            **rules["flags"],
-            "has_symptom": rules["flags"]["has_symptom"] or parsed.mentions_symptom,
-            "has_exam": rules["flags"]["has_exam"] or parsed.mentions_exam,
-        },
-        "source": "llm",
-    }
+    return rules

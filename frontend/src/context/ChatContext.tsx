@@ -190,12 +190,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.email, isAuthenticated, getUserStorageKey, commitMessages]);
 
-  // Exclusão de conta (LGPD): restaura estado inicial sem regravar o storage.
+  // Exclusão de conta ou Logout (LGPD): restaura estado limpo sem vazar para a próxima conta.
   const lastResetToken = useRef(accountResetToken);
   useEffect(() => {
     if (lastResetToken.current === accountResetToken) return;
     lastResetToken.current = accountResetToken;
-    commitMessages(getInitialMessagesForUser(null), false);
+    commitMessages([], false);
     geminiKeyRef.current = '';
     setGeminiApiKey('');
     setOffline(false);
@@ -292,7 +292,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const submitFeedback = useCallback(
     async (messageId: string, rating: number, comment?: string, allowTrainingUse = false) => {
-      // Atualiza o estado local imediatamente
       commitMessages(
         messagesRef.current.map((m) => (m.id === messageId ? { ...m, userRating: rating } : m)),
         true,
@@ -379,8 +378,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           showToast('🔬 Exame Analisado', 'Laudo processado com sucesso pela Doutora Rosa!', 'success');
 
           const explanation = uploadRes.ai_educational_analysis
-            ? `Doutora Rosa, enviei meu exame (${file.name}). Análise descritiva do laudo: ${uploadRes.ai_educational_analysis}. Gostaria de tirar algumas dúvidas com você sobre o que isso significa.`
-            : `Doutora Rosa, enviei meu exame (${file.name}). Trecho descritivo desidentificado: "${uploadRes.anonymized_preview || preview}". Gostaria de conversar com você sobre esses termos.`;
+            ? `Doutora Rosa, enviei meu exame (${file.name}). Análise descritiva do laudo: ${cleanRosaFormatting(uploadRes.ai_educational_analysis)}. Gostaria de tirar algumas dúvidas com você sobre o que isso significa.`
+            : `Doutora Rosa, enviei meu exame (${file.name}). Trecho descritivo desidentificado: "${cleanRosaFormatting(uploadRes.anonymized_preview || preview)}". Gostaria de conversar com você sobre esses termos.`;
 
           await sendMessage(explanation, file.name);
           return;
@@ -410,10 +409,50 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const submitTriageToChat = useCallback(
     (input: TriageInput) => {
-      const symptomsText = input.symptoms.length > 0 ? input.symptoms.join(', ') : 'Nenhum sintoma observado';
+      const realSymptoms = input.symptoms.filter((s) => s.toLowerCase() !== 'nenhum sintoma');
+      const symptomsText = realSymptoms.length > 0 ? realSymptoms.join(', ') : 'Nenhum sintoma observado';
       const ageLabel = AGE_RANGE_OPTIONS.find((o) => o.value === input.ageRange)?.label || input.ageRange;
-      const familyText = input.familyHistory === 'sim' ? 'Sim (Mãe, irmã ou filha)' : 'Não';
-      const userMessageText = `Doutora Rosa, realizei minha Triagem de Atenção Mamária no aplicativo com os seguintes dados:\n• Faixa Etária: ${ageLabel}\n• Histórico Familiar de 1º Grau: ${familyText}\n• Sinais ou Sintomas Relatados: ${symptomsText}\n\nGostaria da sua avaliação acolhedora e personalizada sobre o meu caso.`;
+      
+      let familyText = 'Não informado';
+      if (input.familyHistory === 'sim') familyText = 'Sim (Mãe, irmã ou filha)';
+      else if (input.familyHistory === 'nao') familyText = 'Não';
+      else if (input.familyHistory === 'prefiro_nao_informar') familyText = 'Prefiro não informar';
+
+      const lines: string[] = [
+        'Doutora Rosa, acabei de realizar minha Triagem de Atenção Mamária com as seguintes informações:',
+        `• Faixa Etária: ${ageLabel}`,
+        `• Histórico Familiar de 1º Grau: ${familyText}`,
+        `• Sinais ou Sintomas Observados: ${symptomsText}`,
+      ];
+
+      if (realSymptoms.length > 0) {
+        if (input.symptomSide && input.symptomSide !== 'Prefiro não informar') {
+          lines.push(`• Lado Afetado: ${input.symptomSide}`);
+        }
+        if (input.symptomDuration && input.symptomDuration !== 'Prefiro não informar') {
+          lines.push(`• Tempo Observado: ${input.symptomDuration}`);
+        }
+      }
+
+      if (input.pregnancyBreastfeeding && input.pregnancyBreastfeeding !== 'Prefiro não informar') {
+        lines.push(`• Gestação / Amamentação: ${input.pregnancyBreastfeeding}`);
+      }
+      if (input.hormonesMeds && input.hormonesMeds !== 'Prefiro não informar') {
+        lines.push(`• Uso de Hormônios / Medicação: ${input.hormonesMeds}`);
+      }
+      if (input.menopause && input.menopause !== 'Prefiro não informar') {
+        lines.push(`• Menopausa: ${input.menopause}`);
+      }
+      if (input.radiotherapy && input.radiotherapy !== 'Prefiro não informar') {
+        lines.push(`• Radioterapia no Tórax: ${input.radiotherapy}`);
+      }
+      if (input.medicalFollowup && input.medicalFollowup !== 'Prefiro não informar') {
+        lines.push(`• Acompanhamento Mastologista/Ginecologista: ${input.medicalFollowup}`);
+      }
+
+      lines.push('\nGostaria da sua avaliação acolhedora e personalizada sobre esses dados que acabei de enviar.');
+
+      const userMessageText = lines.join('\n');
 
       const userMsg: ChatMessage = {
         id: makeMessageId('u'),
@@ -443,7 +482,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             age_range: input.ageRange,
             has_family_history: input.familyHistory === 'sim',
             reported_signs: input.symptoms,
-            emotional_impact_level: input.symptoms.length > 0 ? 3 : 1,
+            emotional_impact_level: realSymptoms.length > 0 ? 3 : 1,
           })
           .catch(() => {});
       }

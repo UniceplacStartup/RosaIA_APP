@@ -26,3 +26,9 @@ class ReminderResponse(BaseModel):
     data: str
     concluido: bool
     notes: Optional[str] = None
+    # Campos compatíveis com interfaces em inglês
+    reminder_type: Optional[str] = None
+    title: Optional[str] = None
+    scheduled_for: Optional[str] = None
+    is_completed: Optional[bool] = None
+

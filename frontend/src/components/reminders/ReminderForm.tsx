@@ -53,6 +53,12 @@ export default function ReminderForm() {
     if (created) {
       setTitulo('');
       setJustCreated(created);
+      // Aciona imediatamente a exportação e download do arquivo .ics (iCalendar) com VALARM
+      try {
+        downloadAppleCalendarIcs(created);
+      } catch {
+        /* noop */
+      }
     }
   };
 

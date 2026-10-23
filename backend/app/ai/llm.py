@@ -97,7 +97,7 @@ async def generate(
             clean_fb = fb.strip()
             if clean_fb and clean_fb not in models:
                 models.append(clean_fb)
-    for safety_net in ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3-flash-preview"]:
+    for safety_net in ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview"]:
         if safety_net not in models:
             models.append(safety_net)
 

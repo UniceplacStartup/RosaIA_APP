@@ -1,12 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthView, User } from '../types/auth';
 import { DEMO_USER, DEMO_PASSWORD } from '../data/seedData';
 import { onlyDigits } from '../utils/cpfValidator';
 import { maskCpfLgpd, simulateBlindIndex } from '../utils/cryptoSimulation';
 import { isValidEmail } from '../utils/formValidators';
-import { clearAllStorage, safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
-import { api, ApiError, clearStoredToken } from '../services/api';
+import { clearAllStorage, clearUserSessionStorage, safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
+import { api, ApiError, clearStoredToken, getStoredToken } from '../services/api';
 import { useToast } from './ToastContext';
 
 export interface RegisterPayload {
@@ -23,7 +23,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   authView: AuthView;
   setAuthView: (view: AuthView) => void;
-  /** Incrementa a cada exclusão de conta; outros contextos reagem limpando seus dados. */
+  /** Incrementa a cada exclusão de conta ou logout; outros contextos reagem limpando seus dados. */
   accountResetToken: number;
   login: (email: string, password: string) => Promise<boolean>;
   loginDemo: () => void;
@@ -51,7 +51,14 @@ export const DELETE_CONFIRMATION_WORD = 'EXCLUIR';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
   const [user, setUser] = useState<User>(() => safeGetStorage<User>(STORAGE_KEYS.user, DEMO_USER, isUser));
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Persistência no reload (F5): verifica se há token e perfil salvo no storage
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const token = getStoredToken();
+    const savedUser = safeGetStorage<User | null>(STORAGE_KEYS.user, null, isUser);
+    return Boolean(token && savedUser);
+  });
+
   const [authView, setAuthView] = useState<AuthView>('welcome');
   const [accountResetToken, setAccountResetToken] = useState(0);
 
@@ -64,6 +71,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [showToast],
   );
+
+  const logout = useCallback(() => {
+    const currentEmail = user?.email;
+    clearStoredToken();
+    try {
+      api.auth.logout();
+    } catch {
+      /* noop */
+    }
+    clearUserSessionStorage(currentEmail);
+    setUser(DEMO_USER);
+    setAccountResetToken((token) => token + 1);
+    setIsAuthenticated(false);
+    setAuthView('login');
+    showToast('Sessão Encerrada', 'Você saiu da sua conta com segurança.', 'info');
+  }, [showToast, user?.email]);
+
+  // Validação assíncrona de sessão no reload (F5) sem desconectar se offline
+  useEffect(() => {
+    const token = getStoredToken();
+    if (token) {
+      api.auth
+        .getProfile()
+        .then((res) => {
+          if (res && res.user) {
+            const apiUser = res.user;
+            setUser((prev) => {
+              const updated: User = {
+                fullName: apiUser.full_name || apiUser.fullName || prev.fullName,
+                email: apiUser.email || prev.email,
+                cpfMasked: apiUser.cpf_masked || apiUser.cpfMasked || prev.cpfMasked,
+                cpfHash: apiUser.cpf_hash || apiUser.cpfHash || prev.cpfHash,
+              };
+              safeSetStorage(STORAGE_KEYS.user, updated);
+              return updated;
+            });
+            setIsAuthenticated(true);
+          }
+        })
+        .catch((err: unknown) => {
+          if (err instanceof ApiError && err.status === 401) {
+            logout();
+          }
+        });
+    }
+  }, [logout]);
 
   const login = useCallback(
     async (identifier: string, password: string): Promise<boolean> => {
@@ -191,12 +244,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [showToast],
   );
 
-  const logout = useCallback(() => {
-    api.auth.logout();
-    setIsAuthenticated(false);
-    setAuthView('login');
-    showToast('Sessão Encerrada', 'Você saiu da sua conta com segurança.', 'info');
-  }, [showToast]);
 
   const deleteAccount = useCallback(
     (confirmation: string): boolean => {

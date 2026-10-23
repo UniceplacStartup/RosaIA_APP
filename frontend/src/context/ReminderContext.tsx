@@ -73,37 +73,53 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
     if (token && isAuthenticated) {
       api.reminders
         .list()
-        .then((items) => {
+        .then((items: any[]) => {
           if (items && items.length > 0) {
-            const mapped: Reminder[] = items.map((r) => ({
-              id: r.id,
-              tipo: (r.reminder_type as Reminder['tipo']) || 'exame',
-              titulo: r.title,
-              data: r.scheduled_for.split('T')[0] || r.scheduled_for,
-              concluido: r.is_completed,
-            }));
+            const mapped: Reminder[] = items.map((r) => {
+              const rawDate = r.data || r.scheduled_for || '';
+              const datePart = typeof rawDate === 'string' && rawDate.includes('T') ? rawDate.split('T')[0] : (rawDate || '');
+              let timePart = r.hora || '09:00';
+              if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                const parts = rawDate.split('T');
+                if (parts[1] && parts[1].length >= 5) {
+                  timePart = parts[1].substring(0, 5);
+                }
+              }
+
+              return {
+                id: r.id,
+                tipo: (r.tipo || r.reminder_type || 'Exame') as Reminder['tipo'],
+                titulo: r.titulo || r.title || 'Lembrete de Saúde',
+                data: datePart || '2026-10-23',
+                hora: timePart,
+                quandoLembrar: r.quandoLembrar || '1_dia',
+                recorrencia: r.recorrencia || 'unica',
+                concluido: Boolean(r.concluido ?? r.is_completed),
+              };
+            });
             commit(mapped, true);
             return;
           }
-          const fresh = getInitialRemindersForUser(user);
-          commit(fresh, true);
+          const local = safeGetStorage<Reminder[]>(storageKey, getInitialRemindersForUser(user), isReminderList);
+          commit(local, true);
         })
         .catch(() => {
           const local = safeGetStorage<Reminder[]>(storageKey, getInitialRemindersForUser(user), isReminderList);
           commit(local, false);
         });
     } else {
-      const local = safeGetStorage<Reminder[]>(storageKey, getInitialRemindersForUser(user), isReminderList);
+      const local = safeGetStorage<Reminder[]>(storageKey, getInitialRemindersForUser(isAuthenticated ? user : null), isReminderList);
       commit(local, false);
     }
   }, [user?.email, isAuthenticated, getUserReminderKey, commit]);
 
-  // Exclusão de conta (LGPD): limpa estado sem regravar o storage.
+  // Exclusão de conta ou Logout (LGPD): limpa estado em memória para evitar vazamento entre contas
   const lastResetToken = useRef(accountResetToken);
   useEffect(() => {
     if (lastResetToken.current === accountResetToken) return;
     lastResetToken.current = accountResetToken;
-    commit(getInitialRemindersForUser(null), false);
+    commit([], false);
+    setLastCreatedReminder(null);
   }, [accountResetToken, commit]);
 
   const [lastCreatedReminder, setLastCreatedReminder] = useState<Reminder | null>(null);

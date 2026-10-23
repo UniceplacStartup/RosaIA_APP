@@ -19,14 +19,20 @@ async def list_user_reminders(db: AsyncSession, user: User) -> List[ReminderResp
     )
     result = await db.execute(stmt)
     reminders = result.scalars().all()
+    date_str = r.scheduled_for.strftime("%Y-%m-%d")
+    iso_str = r.scheduled_for.isoformat()
     return [
         ReminderResponse(
             id=str(r.id),
             tipo=r.reminder_type,
             titulo=r.title,
-            data=r.scheduled_for.strftime("%Y-%m-%d"),
+            data=date_str,
             concluido=r.is_completed,
             notes=r.notes,
+            reminder_type=r.reminder_type,
+            title=r.title,
+            scheduled_for=iso_str,
+            is_completed=r.is_completed,
         )
         for r in reminders
     ]
@@ -45,13 +51,19 @@ async def create_user_reminder(db: AsyncSession, user: User, data: ReminderCreat
     db.add(reminder)
     await db.commit()
     await db.refresh(reminder)
+    date_str = reminder.scheduled_for.strftime("%Y-%m-%d")
+    iso_str = reminder.scheduled_for.isoformat()
     return ReminderResponse(
         id=str(reminder.id),
         tipo=reminder.reminder_type,
         titulo=reminder.title,
-        data=reminder.scheduled_for.strftime("%Y-%m-%d"),
+        data=date_str,
         concluido=reminder.is_completed,
         notes=reminder.notes,
+        reminder_type=reminder.reminder_type,
+        title=reminder.title,
+        scheduled_for=iso_str,
+        is_completed=reminder.is_completed,
     )
 
 
@@ -75,13 +87,19 @@ async def update_user_reminder(
 
     await db.commit()
     await db.refresh(reminder)
+    date_str = reminder.scheduled_for.strftime("%Y-%m-%d")
+    iso_str = reminder.scheduled_for.isoformat()
     return ReminderResponse(
         id=str(reminder.id),
         tipo=reminder.reminder_type,
         titulo=reminder.title,
-        data=reminder.scheduled_for.strftime("%Y-%m-%d"),
+        data=date_str,
         concluido=reminder.is_completed,
         notes=reminder.notes,
+        reminder_type=reminder.reminder_type,
+        title=reminder.title,
+        scheduled_for=iso_str,
+        is_completed=reminder.is_completed,
     )
 
 

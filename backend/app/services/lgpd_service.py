@@ -20,31 +20,53 @@ def anonymize_medical_text(raw_text: str) -> str:
     """
     Higienização rigorosa de PII (Personally Identifiable Information) em laudos
     e documentos médicos antes de qualquer processamento por IA (LGPD & RNF04).
+    Remove Nome, CPF, RG, Endereço, Hospital/Clínica, Médicos, Telefones e E-mails.
     """
     if not raw_text:
         return ""
 
-    # 1. Anonimização de CPF
-    text = re.sub(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", "[CPF_OCULTO_LGPD]", raw_text)
+    text = raw_text
 
-    # 2. Anonimização de E-mail
+    # 1. Anonimização de CPF
+    text = re.sub(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", "[CPF_OCULTO_LGPD]", text)
+
+    # 2. Anonimização de RG (vários formatos de estados brasileiros)
+    text = re.sub(r"(?i)\b(?:rg|registro\s*geral)[:\s]*[\d\.\-\/A-Za-z]{5,15}\b", "[RG_OCULTO_LGPD]", text)
+
+    # 3. Anonimização de E-mail
     text = re.sub(
         r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",
         "[EMAIL_OCULTO_LGPD]",
         text,
     )
 
-    # 3. Anonimização de Telefones (formatos com DDD)
+    # 4. Anonimização de Telefones (formatos com DDD)
     text = re.sub(
         r"(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?(?:9\s?\d{4}[-\s]?\d{4}|\d{4}[-\s]?\d{4})",
         "[TELEFONE_OCULTO_LGPD]",
         text,
     )
 
-    # 4. Anonimização de marcadores de paciente/médico em laudos radiológicos
+    # 5. Anonimização de Endereços, Ruas, Bairros, CEPs
+    text = re.sub(r"(?i)\b(?:rua|av\.|avenida|alameda|travessa|quadra|conjunto|lote|bloco|bairro|apto|cep)[:\s]+[^\n,;]{3,50}", "[ENDERECO_OCULTO_LGPD]", text)
+    text = re.sub(r"\b\d{5}-?\d{3}\b", "[CEP_OCULTO_LGPD]", text)
+
+    # 6. Anonimização de Hospitais, Laboratórios e Clínicas
     text = re.sub(
-        r"(?i)(?:paciente|nome da paciente|solicitante|médico solicitante|dr\(a\)?)\s*:\s*([^\n,;]{2,50})",
-        r"\g<0>[PACIENTE_ANONIMIZADO]",
+        r"(?i)(?:hospital|clínica|clinica|laboratório|laboratorio|instituto|centro\s+de\s+diagn[óo]stico|unidade\s+b[áa]sica|ubs)\s+([^\n,;]{2,50})",
+        "[INSTITUICAO_OCULTA_LGPD]",
+        text,
+    )
+
+    # 7. Anonimização de marcadores de paciente/médico/CRM em laudos radiológicos
+    text = re.sub(
+        r"(?i)(?:paciente|nome da paciente|nome do paciente|titular)\s*:\s*([^\n,;]{2,50})",
+        "Paciente: [PACIENTE_ANONIMIZADO]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)(?:solicitante|médico solicitante|medico solicitante|dr\(a\)?|médico assistente|crm(?:/[a-z]{2})?)\s*:\s*([^\n,;]{2,50})",
+        "Médico: [MEDICO_ANONIMIZADO]",
         text,
     )
 

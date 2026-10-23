@@ -46,15 +46,15 @@ class Settings(BaseSettings):
         default="",
         description="Chave de API do Google AI Studio (Gemini 2.5 Flash)",
     )
-    GEMINI_MODEL: str = "gemini-3.5-flash"
+    GEMINI_MODEL: str = "gemini-3.1-flash-lite"
     # Modelo alternativo usado automaticamente se o principal estiver indisponível ou esgotar cota
-    GEMINI_FALLBACK_MODEL: str = "gemini-3.5-flash-lite"
+    GEMINI_FALLBACK_MODEL: str = "gemini-3.5-flash-lite,gemini-3-flash-preview"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     EMBEDDING_DIMENSION: int = 768
 
-    # Resiliência e monitoramento da IA
-    GEMINI_TIMEOUT_SECONDS: float = 30.0
-    GEMINI_MAX_RETRIES: int = 2
+    # Resiliência e monitoramento da IA (otimizado para resposta ágil)
+    GEMINI_TIMEOUT_SECONDS: float = 12.0
+    GEMINI_MAX_RETRIES: int = 1
     # Quantas mensagens anteriores da conversa são enviadas ao modelo (memória)
     CHAT_HISTORY_MESSAGES: int = 12
     # Webhook opcional (Slack/Discord/Teams) para alertar a equipe quando a IA cair no fallback
