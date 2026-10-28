@@ -6,6 +6,7 @@ AttentionLevelLiteral = Literal["rotina_preventiva", "atencao_moderada", "avalia
 
 
 class TriageInput(BaseModel):
+    gender: Optional[str] = Field(default=None, description="Gênero: mulher, homem, mulher_trans ou homem_trans")
     age_range: str = Field(default="50_69", description="Faixa etária da paciente")
     has_family_history: Optional[bool] = Field(default=None, description="Histórico familiar booleano")
     family_history_option: Optional[str] = Field(default="nao", description="Opção: sim, nao ou prefiro_nao_informar")

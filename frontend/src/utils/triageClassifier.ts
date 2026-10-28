@@ -1,6 +1,7 @@
 import type {
   AgeRange,
   FamilyHistory,
+  GenderIdentity,
   HormonesStatus,
   MedicalFollowupStatus,
   MenopauseStatus,
@@ -13,6 +14,47 @@ import type {
   TriageInput,
   TriageSymptomOption,
 } from '../types/triage';
+
+export const GENDER_OPTIONS: ReadonlyArray<{ value: GenderIdentity; label: string }> = [
+  { value: 'mulher', label: 'Mulher' },
+  { value: 'homem', label: 'Homem' },
+  { value: 'mulher_trans', label: 'Mulher transgênero' },
+  { value: 'homem_trans', label: 'Homem transgênero' },
+];
+
+export const GENDER_LABELS: Record<GenderIdentity, string> = {
+  mulher: 'Mulher',
+  homem: 'Homem',
+  mulher_trans: 'Mulher transgênero',
+  homem_trans: 'Homem transgênero',
+};
+
+/** Orientação educativa específica conforme o gênero informado (sem presumir que toda usuária é mulher cis). */
+function genderGuidance(gender: GenderIdentity | undefined): string | null {
+  switch (gender) {
+    case 'homem':
+      return (
+        'Você informou ser homem. Homens também têm tecido mamário: o câncer de mama é raro neles (cerca de 1% dos casos), ' +
+        'mas qualquer caroço, secreção ou alteração no mamilo merece avaliação médica. Já o aumento benigno do tecido mamário ' +
+        '(ginecomastia) é bem comum. A mamografia de rotina geralmente não é indicada sem fatores de risco, como histórico ' +
+        'familiar ou alterações genéticas (por exemplo BRCA); o médico define o melhor caminho para você.'
+      );
+    case 'mulher_trans':
+      return (
+        'Você informou ser mulher transgênero. Se você faz ou já fez terapia hormonal feminilizante, isso pode influenciar o tecido mamário. ' +
+        'Em geral, as orientações atuais sugerem considerar a mamografia a partir dos 50 anos e após alguns anos de hormonioterapia, ' +
+        'mas o seu médico individualiza essa decisão. Vale sempre ficar atenta a qualquer mudança nas mamas e contar ao médico sobre os hormônios que usa.'
+      );
+    case 'homem_trans':
+      return (
+        'Você informou ser homem transgênero. Se você ainda tem tecido mamário, o acompanhamento costuma seguir as recomendações para pessoas com mamas por faixa etária. ' +
+        'Se já fez mastectomia, ainda pode restar uma pequena quantidade de tecido, então caroços ou mudanças no peitoral, na cicatriz ou na axila também devem ser avaliados. ' +
+        'Informe ao médico se usa testosterona e quando foi a cirurgia, caso tenha feito.'
+      );
+    default:
+      return null;
+  }
+}
 
 export const AGE_RANGE_OPTIONS: ReadonlyArray<{ value: AgeRange; label: string }> = [
   { value: 'menos_40', label: 'Menos de 40 anos' },
@@ -139,9 +181,13 @@ export function generateTriageDoctorResponse(input: TriageInput): string {
 
   // Abertura afetuosa e empática
   parts.push(
-    'Olá, querida! Recebi com todo o meu carinho as informações da sua triagem de atenção mamária. ' +
+    `Olá${input.gender === 'homem' || input.gender === 'homem_trans' ? ', querido' : ', querida'}! Recebi com todo o meu carinho as informações da sua triagem de atenção mamária. ` +
       'Estou aqui ao seu lado para conversarmos com calma, sinceridade e muita tranquilidade sobre cada ponto que você informou.',
   );
+
+  // Orientação específica pelo gênero informado
+  const genderText = genderGuidance(input.gender);
+  if (genderText) parts.push(genderText);
 
   // Análise da Faixa Etária
   if (input.ageRange === 'menos_40') {

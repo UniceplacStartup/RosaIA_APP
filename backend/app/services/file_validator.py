@@ -153,6 +153,46 @@ def sanitize_conventional_image(file_bytes: bytes, filename: str) -> Tuple[str, 
         )
 
 
+def prepare_image_for_vision(file_bytes: bytes, filename: str, max_side: int = 1600) -> Optional[Tuple[bytes, str]]:
+    """
+    Converte imagem convencional ou DICOM em JPEG limpo (sem EXIF/metadados, 8 bits, lado máximo
+    `max_side`) para análise visual pela IA. Retorna None se não for possível renderizar.
+    """
+    try:
+        if is_dicom_file(file_bytes, filename):
+            if pydicom is None:
+                return None
+            ds = pydicom.dcmread(io.BytesIO(file_bytes), force=True)
+            import numpy as np  # dependência necessária para renderizar pixels DICOM
+
+            arr = ds.pixel_array.astype("float32")
+            if arr.ndim == 3 and arr.shape[-1] not in (3, 4):
+                arr = arr[0]
+            lo, hi = float(arr.min()), float(arr.max())
+            arr = (arr - lo) / (hi - lo) * 255.0 if hi > lo else arr * 0
+            if str(getattr(ds, "PhotometricInterpretation", "")) == "MONOCHROME1":
+                arr = 255.0 - arr
+            image = Image.fromarray(np.clip(arr, 0, 255).astype("uint8"))
+        else:
+            image = Image.open(io.BytesIO(file_bytes))
+            image.load()
+            if image.mode in ("I;16", "I;16L", "I;16B", "I", "F"):
+                lo, hi = image.getextrema()
+                scale = 255.0 / (hi - lo) if hi > lo else 1.0
+                image = image.point(lambda p: (p - lo) * scale).convert("L")
+            elif image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
+
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+        image.thumbnail((max_side, max_side))
+        out = io.BytesIO()
+        image.save(out, format="JPEG", quality=88)  # re-encode descarta EXIF e metadados
+        return out.getvalue(), "image/jpeg"
+    except Exception:
+        return None
+
+
 def validate_and_inspect_document(filename: str, content_type: str, raw_bytes: bytes) -> Dict[str, Any]:
     """
     Inspeção e validação para suportar tanto documentos quanto imagens DICOM e convencionais.

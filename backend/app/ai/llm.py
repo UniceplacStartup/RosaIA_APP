@@ -69,6 +69,7 @@ async def generate(
     max_retries: Optional[int] = None,
     alert: bool = True,
     audio: Optional[Tuple[bytes, str]] = None,
+    images: Optional[Sequence[Tuple[bytes, str]]] = None,
 ) -> LLMResult:
     """
     Gera texto (ou JSON estruturado, se `response_schema` for informado).
@@ -88,6 +89,9 @@ async def generate(
     if audio is not None and contents:
         audio_bytes, audio_mime = audio
         contents[-1].parts.append(types.Part.from_bytes(data=audio_bytes, mime_type=audio_mime))
+    if images and contents:
+        for img_bytes, img_mime in images:
+            contents[-1].parts.append(types.Part.from_bytes(data=img_bytes, mime_type=img_mime))
     config_kwargs = dict(system_instruction=system_instruction, temperature=temperature)
     if response_schema is not None:
         config_kwargs.update(

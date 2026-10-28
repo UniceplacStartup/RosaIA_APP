@@ -17,7 +17,7 @@ import { formatClockTime } from '../utils/format';
 import { safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
 import { api, getStoredToken } from '../services/api';
 import type { TriageInput } from '../types/triage';
-import { AGE_RANGE_OPTIONS, cleanRosaFormatting, generateTriageDoctorResponse } from '../utils/triageClassifier';
+import { AGE_RANGE_OPTIONS, cleanRosaFormatting, GENDER_LABELS, generateTriageDoctorResponse } from '../utils/triageClassifier';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
@@ -374,18 +374,49 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const token = getStoredToken();
       if (token && !offlineRef.current) {
         try {
-          showToast('Analisando Exame...', 'Processando documento e protegendo dados pessoais...', 'info');
+          showToast('Analisando...', 'A Doutora Rosa está analisando o seu arquivo com proteção de dados pessoais.', 'info');
+          setIsTyping(true);
           const uploadRes = await api.upload.uploadDocument(file);
-          showToast('🔬 Exame Analisado', 'Laudo processado com sucesso pela Doutora Rosa!', 'success');
+          showToast('🔬 Arquivo Analisado', 'A Doutora Rosa já respondeu no chat.', 'success');
 
-          const explanation = uploadRes.ai_educational_analysis
-            ? `Doutora Rosa, enviei meu exame (${file.name}). Análise descritiva do laudo: ${cleanRosaFormatting(uploadRes.ai_educational_analysis)}. Gostaria de tirar algumas dúvidas com você sobre o que isso significa.`
-            : `Doutora Rosa, enviei meu exame (${file.name}). Trecho descritivo desidentificado: "${cleanRosaFormatting(uploadRes.anonymized_preview || preview)}". Gostaria de conversar com você sobre esses termos.`;
+          if (uploadRes.user_message && uploadRes.assistant_message) {
+            const u = uploadRes.user_message;
+            const a = uploadRes.assistant_message;
+            commitMessages([
+              ...messagesRef.current,
+              {
+                id: u.id,
+                dateGroup: u.date_group,
+                time: u.time,
+                sender: 'user',
+                text: u.text,
+                docAttachment: file.name,
+              },
+              {
+                id: a.id,
+                dateGroup: a.date_group,
+                time: a.time,
+                sender: 'doutora_rosa',
+                emotionTag: a.emotion_tag || 'Análise • Doutora Rosa',
+                text: cleanRosaFormatting(a.text),
+                aiModel: a.ai_model,
+                usedFallback: a.used_fallback,
+                urgencyLevel: a.urgency_level,
+              },
+            ]);
+            return;
+          }
 
-          await sendMessage(explanation, file.name);
+          const analysis = uploadRes.educational_interpretation || uploadRes.extracted_preview || preview;
+          await sendMessage(
+            `Doutora Rosa, enviei meu arquivo (${file.name}). ${cleanRosaFormatting(analysis)}`,
+            file.name,
+          );
           return;
         } catch {
           // Se upload na API falhar, cai no fluxo local
+        } finally {
+          setIsTyping(false);
         }
       }
 
@@ -421,6 +452,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       const lines: string[] = [
         'Doutora Rosa, acabei de realizar minha Triagem de Atenção Mamária com as seguintes informações:',
+        `• Gênero: ${GENDER_LABELS[input.gender] || input.gender}`,
         `• Faixa Etária: ${ageLabel}`,
         `• Histórico Familiar de 1º Grau: ${familyText}`,
         `• Sinais ou Sintomas Observados: ${symptomsText}`,
@@ -497,6 +529,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
         api.triage
           .assess({
+            gender: input.gender,
             age_range: input.ageRange,
             has_family_history: input.familyHistory === 'sim',
             reported_signs: input.symptoms,

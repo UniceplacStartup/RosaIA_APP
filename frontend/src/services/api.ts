@@ -151,11 +151,14 @@ export interface ApiAudioChatResponse {
 export interface ApiUploadResponse {
   document_id: string;
   filename: string;
-  category: string;
-  birads_mentioned?: string | null;
-  ai_educational_analysis?: string | null;
-  anonymized_preview: string;
-  message: string;
+  lgpd_anonymized?: boolean;
+  extracted_preview?: string;
+  birads_detected?: string | null;
+  educational_interpretation?: string;
+  image_kind?: string | null;
+  user_message?: ApiMessageResponse | null;
+  assistant_message?: ApiMessageResponse | null;
+  medical_disclaimer?: string;
 }
 
 export interface ApiReminder {
@@ -169,6 +172,7 @@ export interface ApiReminder {
 }
 
 export interface ApiTriagePayload {
+  gender?: string;
   age_range: string;
   has_family_history: boolean;
   reported_signs: string[];

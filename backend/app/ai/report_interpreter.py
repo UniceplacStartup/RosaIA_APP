@@ -1,7 +1,9 @@
 import re
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
+from pydantic import BaseModel, Field
 from app.ai.prompts import (
+    SYSTEM_PROMPT_DOUTORA_ROSA,
     SYSTEM_PROMPT_REPORT_ANALYSIS,
     MANDATORY_MEDICAL_DISCLAIMER,
     BIRADS_DESCRIPTIONS,
@@ -11,6 +13,80 @@ from app.ai.client import get_genai_client
 from app.core.config import settings
 
 logger = logging.getLogger("rosaia.ai.report_interpreter")
+
+
+class ImageAnalysis(BaseModel):
+    """Saída estruturada da análise visual de uma imagem enviada à Doutora Rosa."""
+    image_kind: str = Field(
+        description=(
+            "Um de: mamografia, ultrassom_mama, ressonancia_mama, laudo_documento, "
+            "outra_imagem_medica, foto_corporal, nao_medica"
+        )
+    )
+    is_breast_imaging: bool = Field(description="True se for exame de imagem da mama ou laudo de exame mamário")
+    visible_birads: Optional[int] = Field(
+        default=None,
+        description="Categoria BI-RADS (0 a 6) SOMENTE se estiver escrita de forma legível na imagem; senão null",
+    )
+    reply: str = Field(description="Resposta final da Doutora Rosa para a usuária, em português, sem * nem #")
+
+
+IMAGE_ANALYSIS_INSTRUCTIONS = (
+    "Você recebeu uma IMAGEM enviada pela usuária. Olhe a imagem de verdade e responda de forma dinâmica, "
+    "objetiva e específica para o que ela realmente contém. Siga estas regras:\n"
+    "1. Primeiro identifique o que é a imagem (image_kind) e diga isso claramente na resposta, em uma frase.\n"
+    "2. Se NÃO for exame/laudo mamário (ex.: paisagem, pessoa, documento qualquer, outro exame), diga com gentileza "
+    "e objetividade o que você vê, explique que não é um exame de mama e que, por isso, não há o que interpretar como "
+    "mamografia. NÃO mencione BI-RADS nem peça BI-RADS. Pergunte em que pode ajudar.\n"
+    "3. Se for mamografia, ultrassom ou ressonância da mama: descreva de forma objetiva o que é visível "
+    "(tipo de exame, incidência/lateralidade se identificáveis, padrão de densidade, e qualquer achado aparente como "
+    "nódulo, assimetria ou calcificações, sempre usando termos como 'aparenta' ou 'parece'). Deixe claro que uma imagem "
+    "analisada por IA não substitui a leitura do radiologista e que a classificação BI-RADS só vale quando consta no "
+    "laudo médico. Só peça o BI-RADS/laudo se ele NÃO estiver visível na imagem e se for útil.\n"
+    "4. Se a imagem for um laudo escrito: leia o texto visível, explique os termos e a categoria BI-RADS (se constar) "
+    "em linguagem leiga, e preencha visible_birads.\n"
+    "5. Nunca dê diagnóstico definitivo, prognóstico ou tratamento. Nunca invente achados que não enxerga; se a "
+    "qualidade for ruim, diga isso. Oculte qualquer dado pessoal (nome, CPF, datas de nascimento) que apareça.\n"
+    "6. Seja concisa (até cerca de 180 palavras), acolhedora, sem asteriscos nem hashtags, e termine com uma pergunta "
+    "curta e aberta. Recomende avaliação presencial apenas quando for exame mamário."
+)
+
+
+async def analyze_medical_image(
+    image: Tuple[bytes, str],
+    original_filename: str,
+    extra_context: str = "",
+) -> Optional[ImageAnalysis]:
+    """
+    Envia a imagem ao Gemini (multimodal) e retorna a análise estruturada.
+    Retorna None se o modelo estiver indisponível (o chamador usa fallback honesto).
+    """
+    from app.ai.llm import generate
+
+    prompt = f"Arquivo enviado: {original_filename}.\n{IMAGE_ANALYSIS_INSTRUCTIONS}"
+    if extra_context:
+        prompt += f"\n\nContexto da usuária: {extra_context}"
+    try:
+        result = await generate(
+            system_instruction=(
+                SYSTEM_PROMPT_DOUTORA_ROSA
+                + "\n\nAs regras específicas da tarefa atual prevalecem sobre as diretrizes gerais acima "
+                "(por exemplo: não fale de BI-RADS nem de benignidade se a imagem não for um exame mamário)."
+            ),
+            turns=[("user", prompt)],
+            response_schema=ImageAnalysis,
+            temperature=0.2,
+            purpose="image_analysis",
+            images=[image],
+        )
+        analysis = ImageAnalysis.model_validate_json(result.text)
+        analysis.reply = clean_rosa_text(analysis.reply)
+        if analysis.visible_birads is not None and not 0 <= analysis.visible_birads <= 6:
+            analysis.visible_birads = None
+        return analysis
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erro na análise visual da imagem: %s", exc)
+        return None
 
 def extract_birads_classification(text: str) -> Optional[int]:
     """

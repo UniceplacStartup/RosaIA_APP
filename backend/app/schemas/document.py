@@ -3,6 +3,8 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
+from app.schemas.chat import MessageResponse
+
 
 class DocumentUploadMetadata(BaseModel):
     id: uuid.UUID
@@ -19,4 +21,7 @@ class DocumentAnalysisResponse(BaseModel):
     extracted_preview: str
     birads_detected: Optional[str] = None
     educational_interpretation: str
+    image_kind: Optional[str] = None
+    user_message: Optional[MessageResponse] = None
+    assistant_message: Optional[MessageResponse] = None
     medical_disclaimer: str = "Aviso Médico (RNF13): Esta análise é puramente educativa e não substitui consulta com mastologista ou médico especialista."

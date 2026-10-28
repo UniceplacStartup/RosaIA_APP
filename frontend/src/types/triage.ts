@@ -1,3 +1,5 @@
+export type GenderIdentity = 'mulher' | 'homem' | 'mulher_trans' | 'homem_trans';
+
 export type AgeRange = 'menos_40' | '40_49' | '50_69' | '70_mais' | 'prefiro_nao_informar';
 
 export type FamilyHistory = 'nao' | 'sim' | 'prefiro_nao_informar';
@@ -31,6 +33,7 @@ export interface LifestyleData {
 }
 
 export interface TriageInput {
+  gender: GenderIdentity;
   ageRange: AgeRange;
   familyHistory: FamilyHistory;
   symptoms: string[];

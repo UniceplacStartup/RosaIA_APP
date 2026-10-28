@@ -5,6 +5,25 @@ from app.db.models.user import User
 from app.schemas.triage import TriageInput, TriageResult
 from app.ai.prompts import clean_rosa_text
 
+GENDER_GUIDANCE = {
+    "homem": (
+        "Você informou ser homem. Homens também têm tecido mamário: o câncer de mama é raro neles (cerca de 1% dos casos), "
+        "mas qualquer caroço, secreção ou alteração no mamilo merece avaliação médica. Já o aumento benigno do tecido mamário "
+        "(ginecomastia) é bem comum. A mamografia de rotina geralmente não é indicada sem fatores de risco, como histórico "
+        "familiar ou alterações genéticas (por exemplo BRCA); o médico define o melhor caminho para você."
+    ),
+    "mulher_trans": (
+        "Você informou ser mulher transgênero. Se você faz ou já fez terapia hormonal feminilizante, isso pode influenciar o tecido mamário. "
+        "Em geral, as orientações atuais sugerem considerar a mamografia a partir dos 50 anos e após alguns anos de hormonioterapia, "
+        "mas o seu médico individualiza essa decisão. Vale sempre ficar atenta a qualquer mudança nas mamas e contar ao médico sobre os hormônios que usa."
+    ),
+    "homem_trans": (
+        "Você informou ser homem transgênero. Se você ainda tem tecido mamário, o acompanhamento costuma seguir as recomendações para pessoas com mamas por faixa etária. "
+        "Se já fez mastectomia, ainda pode restar uma pequena quantidade de tecido, então caroços ou mudanças no peitoral, na cicatriz ou na axila também devem ser avaliados. "
+        "Informe ao médico se usa testosterona e quando foi a cirurgia, caso tenha feito."
+    ),
+}
+
 
 def build_detailed_empathetic_triage_guidance(data: TriageInput) -> str:
     """
@@ -18,6 +37,10 @@ def build_detailed_empathetic_triage_guidance(data: TriageInput) -> str:
         "Olá, querida! Analisei com todo o carinho e atenção cada detalhe da sua triagem mamária. "
         "Estou aqui ao seu lado para te acolher, esclarecer suas dúvidas com sinceridade e orientar com serenidade."
     )
+
+    gender_text = GENDER_GUIDANCE.get((data.gender or "").lower())
+    if gender_text:
+        parts.append(gender_text)
 
     # Análise de Faixa Etária
     age = data.age_range

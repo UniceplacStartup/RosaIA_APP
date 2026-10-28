@@ -8,6 +8,7 @@ import type {
   AgeRange,
   AlcoholFrequency,
   FamilyHistory,
+  GenderIdentity,
   HormonesStatus,
   MedicalFollowupStatus,
   MenopauseStatus,
@@ -25,6 +26,7 @@ import {
   AGE_RANGE_OPTIONS,
   classifyTriage,
   FAMILY_HISTORY_OPTIONS,
+  GENDER_OPTIONS,
   HORMONES_OPTIONS,
   MEDICAL_FOLLOWUP_OPTIONS,
   MENOPAUSE_OPTIONS,
@@ -43,6 +45,7 @@ const RESULT_TONE: Record<RiskLevel, string> = {
 };
 
 interface StoredTriageState {
+  gender: GenderIdentity | '';
   ageRange: AgeRange | '';
   familyHistory: FamilyHistory | '';
   symptoms: string[];
@@ -60,6 +63,7 @@ interface StoredTriageState {
 }
 
 const DEFAULT_STATE: StoredTriageState = {
+  gender: '',
   ageRange: '',
   familyHistory: '',
   symptoms: [],
@@ -142,6 +146,11 @@ export default function TriageSection() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (!state.gender) {
+      showToast('Gênero', 'Por favor, selecione seu gênero para que a orientação seja adequada a você.', 'warning');
+      return;
+    }
+
     if (!state.ageRange) {
       showToast('Faixa Etária', 'Por favor, selecione sua faixa etária para prosseguir com a triagem.', 'warning');
       return;
@@ -153,6 +162,7 @@ export default function TriageSection() {
     }
 
     const input: TriageInput = {
+      gender: state.gender,
       ageRange: state.ageRange,
       familyHistory: (state.familyHistory || 'prefiro_nao_informar') as FamilyHistory,
       symptoms: state.symptoms,
@@ -218,10 +228,40 @@ export default function TriageSection() {
       </div>
 
       <form id="formTriagem" className="space-y-4" onSubmit={handleSubmit}>
-        {/* 1. Faixa Etária */}
+        {/* 1. Gênero */}
+        <fieldset className="bg-rosa-50/50 p-3.5 rounded-xl border border-rosa-100">
+          <legend className="block text-xs font-bold text-rosa-900 mb-1.5">1. Gênero</legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            {GENDER_OPTIONS.map((opt) => {
+              const isChecked = state.gender === opt.value;
+              return (
+                <label
+                  key={opt.value}
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition ${
+                    isChecked
+                      ? 'bg-rosa-100 border-rosa-400 font-semibold text-rosa-950'
+                      : 'bg-white border-rosa-200 hover:bg-rosa-50 text-gray-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="triagemGenero"
+                    value={opt.value}
+                    checked={isChecked}
+                    onChange={() => updateState((prev) => ({ ...prev, gender: opt.value }))}
+                    className="accent-rosa-800 cursor-pointer"
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        {/* 2. Faixa Etária */}
         <div className="bg-rosa-50/50 p-3.5 rounded-xl border border-rosa-100">
           <label htmlFor="triagemIdade" className="block text-xs font-bold text-rosa-900 mb-1">
-            1. Faixa Etária
+            2. Faixa Etária
           </label>
           <select
             id="triagemIdade"
@@ -243,7 +283,7 @@ export default function TriageSection() {
         {/* 2. Histórico Familiar */}
         <fieldset className="bg-rosa-50/50 p-3.5 rounded-xl border border-rosa-100">
           <legend className="block text-xs font-bold text-rosa-900 mb-1.5">
-            2. Histórico Familiar de Câncer de Mama ou Ovário (Parentes de 1º Grau)
+            3. Histórico Familiar de Câncer de Mama ou Ovário (Parentes de 1º Grau)
           </legend>
           <div className="flex flex-wrap gap-4 text-xs">
             {FAMILY_HISTORY_OPTIONS.map((opt) => (
@@ -265,7 +305,7 @@ export default function TriageSection() {
         {/* 3. Sintomas Observados */}
         <fieldset className="bg-rosa-50/50 p-3.5 rounded-xl border border-rosa-100">
           <legend className="block text-xs font-bold text-rosa-900 mb-1.5">
-            3. Sinais ou Sintomas Observados Recentemente
+            4. Sinais ou Sintomas Observados Recentemente
           </legend>
           <p className="text-[11px] text-gray-500 mb-2">
             Selecione qualquer alteração que você tenha notado nas mamas ou axilas (ou marque "Nenhum sintoma"):
@@ -360,7 +400,7 @@ export default function TriageSection() {
           {/* 4.1 Gestação e amamentação */}
           <fieldset>
             <legend className="block text-xs font-bold text-gray-800 mb-1">
-              4. Está grávida ou amamentando?
+              5. Está grávida ou amamentando?
             </legend>
             <div className="flex flex-wrap gap-4 text-xs">
               {PREGNANCY_OPTIONS.map((opt) => (
@@ -382,7 +422,7 @@ export default function TriageSection() {
           {/* 4.2 Hormônios e Medicamentos */}
           <fieldset className="pt-2 border-t border-rosa-100">
             <legend className="block text-xs font-bold text-gray-800 mb-1">
-              5. Usa anticoncepcional, reposição hormonal ou medicamentos contínuos?
+              6. Usa anticoncepcional, reposição hormonal ou medicamentos contínuos?
             </legend>
             <div className="flex flex-wrap gap-4 text-xs">
               {HORMONES_OPTIONS.map((opt) => (
@@ -404,7 +444,7 @@ export default function TriageSection() {
           {/* 4.3 Menopausa */}
           <fieldset className="pt-2 border-t border-rosa-100">
             <legend className="block text-xs font-bold text-gray-800 mb-1">
-              6. Já entrou na menopausa?
+              7. Já entrou na menopausa?
             </legend>
             <div className="flex flex-wrap gap-4 text-xs">
               {MENOPAUSE_OPTIONS.map((opt) => (
@@ -426,7 +466,7 @@ export default function TriageSection() {
           {/* 4.4 Radioterapia */}
           <fieldset className="pt-2 border-t border-rosa-100">
             <legend className="block text-xs font-bold text-gray-800 mb-1">
-              7. Já realizou radioterapia na região do tórax anteriormente?
+              8. Já realizou radioterapia na região do tórax anteriormente?
             </legend>
             <div className="flex flex-wrap gap-4 text-xs">
               {RADIOTHERAPY_OPTIONS.map((opt) => (
@@ -448,7 +488,7 @@ export default function TriageSection() {
           {/* 4.5 Estilo de vida */}
           <div className="pt-2 border-t border-rosa-100 space-y-2">
             <span className="block text-xs font-bold text-gray-800">
-              8. Estilo de vida e hábitos cotidianos:
+              9. Estilo de vida e hábitos cotidianos:
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
               <div>
@@ -519,7 +559,7 @@ export default function TriageSection() {
           {/* 4.6 Acompanhamento Médico Regular */}
           <fieldset className="pt-2 border-t border-rosa-100">
             <legend className="block text-xs font-bold text-gray-800 mb-1">
-              9. Faz acompanhamento médico regular com mastologista ou ginecologista?
+              10. Faz acompanhamento médico regular com mastologista ou ginecologista?
             </legend>
             <div className="flex flex-wrap gap-4 text-xs">
               {MEDICAL_FOLLOWUP_OPTIONS.map((opt) => (
