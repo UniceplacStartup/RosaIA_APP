@@ -68,6 +68,7 @@ async def generate(
     purpose: str = "chat",
     max_retries: Optional[int] = None,
     alert: bool = True,
+    audio: Optional[Tuple[bytes, str]] = None,
 ) -> LLMResult:
     """
     Gera texto (ou JSON estruturado, se `response_schema` for informado).
@@ -84,6 +85,9 @@ async def generate(
     contents: List[types.Content] = [
         types.Content(role=role, parts=[types.Part(text=text)]) for role, text in turns
     ]
+    if audio is not None and contents:
+        audio_bytes, audio_mime = audio
+        contents[-1].parts.append(types.Part.from_bytes(data=audio_bytes, mime_type=audio_mime))
     config_kwargs = dict(system_instruction=system_instruction, temperature=temperature)
     if response_schema is not None:
         config_kwargs.update(

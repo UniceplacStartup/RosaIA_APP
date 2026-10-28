@@ -1,9 +1,9 @@
 import uuid
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +19,10 @@ from app.schemas.chat import (
     MessageFeedbackCreate,
     MessageFeedbackResponse,
     AIMetricsResponse,
-    CurateFeedbackRequest
+    CurateFeedbackRequest,
+    TriageExchangeRequest,
+    TriageExchangeResponse,
+    AudioChatResponse,
 )
 from app.services.lgpd_service import anonymize_medical_text
 from app.ai.emotion_analyzer import classify_emotion
@@ -327,6 +330,138 @@ async def send_message(
     await db.refresh(bot_msg_record)
 
     return serialize_chat_message(bot_msg_record)
+
+
+@router.post(
+    "/triage-exchange",
+    response_model=TriageExchangeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Persiste o resumo da triagem e o acolhimento da Dra. Rosa no histórico da conta"
+)
+async def save_triage_exchange(
+    payload: TriageExchangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    A triagem é respondida localmente no frontend; este endpoint grava o par
+    pergunta/resposta na conversa contínua para que apareça em qualquer navegador/dispositivo.
+    """
+    thread = await get_or_create_active_thread(current_user.id, db)
+    now = datetime.now(timezone.utc)
+    user_rec = ChatMessage(
+        thread_id=thread.id,
+        sender_type="user",
+        content=anonymize_medical_text(payload.user_text),
+        rag_references=[],
+        created_at=now,
+    )
+    bot_rec = ChatMessage(
+        thread_id=thread.id,
+        sender_type="doutora_rosa",
+        content=payload.assistant_text,
+        detected_emotion=(payload.emotion_tag or "Acolhimento da Triagem")[:40],
+        rag_references=[],
+        created_at=now + timedelta(milliseconds=1),
+    )
+    db.add_all([user_rec, bot_rec])
+    thread.last_message_at = now
+    await db.commit()
+    await db.refresh(user_rec)
+    await db.refresh(bot_rec)
+    return TriageExchangeResponse(
+        user_message=serialize_chat_message(user_rec),
+        assistant_message=serialize_chat_message(bot_rec),
+    )
+
+
+ALLOWED_AUDIO_TYPES = {
+    "audio/webm": "audio/webm",
+    "audio/ogg": "audio/ogg",
+    "audio/mp4": "audio/mp4",
+    "audio/x-m4a": "audio/mp4",
+    "audio/mpeg": "audio/mp3",
+    "audio/mp3": "audio/mp3",
+    "audio/wav": "audio/wav",
+    "audio/x-wav": "audio/wav",
+    "audio/aac": "audio/aac",
+}
+MAX_AUDIO_BYTES = 10 * 1024 * 1024
+
+
+@router.post(
+    "/audio",
+    response_model=AudioChatResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Mensagem de voz: a IA transcreve o áudio e responde de acordo"
+)
+async def send_audio_message(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    1. Valida formato/tamanho do áudio (não é armazenado).
+    2. Gemini transcreve a fala em português.
+    3. A transcrição segue o mesmo pipeline do chat de texto (LGPD, urgência, RAG, guardrails).
+    """
+    base_type = (file.content_type or "").split(";")[0].strip().lower()
+    mime = ALLOWED_AUDIO_TYPES.get(base_type)
+    if not mime:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Formato de áudio não suportado."
+        )
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Áudio vazio.")
+    if len(data) > MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Áudio muito grande (máximo 10 MB)."
+        )
+
+    try:
+        result = await llm.generate(
+            system_instruction=(
+                "Você é um transcritor. Transcreva fielmente, em português do Brasil, a fala do áudio. "
+                "Responda SOMENTE com a transcrição, sem comentários. Se não houver fala inteligível, "
+                "responda exatamente: [inaudível]"
+            ),
+            turns=[("user", "Transcreva este áudio.")],
+            temperature=0.0,
+            purpose="audio_transcription",
+            audio=(data, mime),
+        )
+    except llm.LLMUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Não consegui processar seu áudio agora. Tente novamente ou digite sua mensagem."
+        )
+
+    transcript = result.text.strip()[:4000]
+    if not transcript or transcript.lower().startswith("[inaud"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Não consegui entender o áudio. Tente gravar novamente em um local mais silencioso."
+        )
+
+    reply = await send_message(MessageSendRequest(content=transcript), current_user, db)
+
+    # Recupera a mensagem da usuária recém-salva (anterior à resposta)
+    thread = await get_or_create_active_thread(current_user.id, db)
+    user_stmt = (
+        select(ChatMessage)
+        .where(ChatMessage.thread_id == thread.id, ChatMessage.sender_type == "user")
+        .order_by(ChatMessage.created_at.desc())
+        .limit(1)
+    )
+    user_rec = (await db.execute(user_stmt)).scalar_one()
+    return AudioChatResponse(
+        transcript=user_rec.content,
+        user_message=serialize_chat_message(user_rec),
+        reply=reply,
+    )
 
 
 @router.post(

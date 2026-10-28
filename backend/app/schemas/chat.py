@@ -46,6 +46,23 @@ class MessageResponse(BaseModel):
     user_rating: Optional[int] = None
 
 
+class TriageExchangeRequest(BaseModel):
+    user_text: str = Field(..., min_length=1, max_length=6000, description="Resumo da triagem enviado pela usuária")
+    assistant_text: str = Field(..., min_length=1, max_length=12000, description="Resposta de acolhimento da Doutora Rosa")
+    emotion_tag: Optional[str] = Field(default=None, max_length=100)
+
+
+class TriageExchangeResponse(BaseModel):
+    user_message: "MessageResponse"
+    assistant_message: "MessageResponse"
+
+
+class AudioChatResponse(BaseModel):
+    transcript: str
+    user_message: "MessageResponse"
+    reply: "MessageResponse"
+
+
 class ThreadDetailResponse(BaseModel):
     thread_id: str
     title: str

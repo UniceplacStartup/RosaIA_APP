@@ -52,6 +52,7 @@ interface ChatContextValue {
   jumpRequest: JumpRequest | null;
   sendMessage: (text: string, docAttachment?: string | null) => Promise<void>;
   submitTriageToChat: (input: TriageInput) => void;
+  sendAudioMessage: (audio: Blob) => Promise<void>;
   retryLastMessage: () => void;
   toggleOfflineSimulation: () => void;
   uploadExamFile: (file: File) => Promise<void>;
@@ -477,6 +478,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // Tenta registrar na API em segundo plano se autenticado
       const token = getStoredToken();
       if (token && !offlineRef.current) {
+        // Persiste o par triagem/acolhimento na conversa da conta (visível em qualquer navegador)
+        api.chat
+          .saveTriageExchange(userMessageText, doctorReplyText, doctorMsg.emotionTag)
+          .then((saved) => {
+            const idMap: Record<string, string> = {
+              [userMsg.id]: saved.user_message.id,
+              [doctorMsg.id]: saved.assistant_message.id,
+            };
+            commitMessages(
+              messagesRef.current.map((m) => {
+                const newId = idMap[m.id];
+                return newId ? { ...m, id: newId } : m;
+              }),
+            );
+          })
+          .catch(() => {});
+
         api.triage
           .assess({
             age_range: input.ageRange,
@@ -488,6 +506,49 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     },
     [commitMessages],
+  );
+
+  const sendAudioMessage = useCallback(
+    async (audio: Blob): Promise<void> => {
+      if (!getStoredToken() || offlineRef.current) {
+        showToast('Áudio indisponível', 'Conecte-se à sua conta para conversar por áudio com a Doutora Rosa.', 'warning');
+        return;
+      }
+      setErrorBannerText(null);
+      setIsTyping(true);
+      try {
+        const res = await api.chat.sendAudio(audio);
+        const user = res.user_message;
+        const bot = res.reply;
+        const toChat = (m: typeof user): ChatMessage => ({
+          id: m.id,
+          dateGroup: m.date_group,
+          time: m.time,
+          sender: m.sender,
+          text: m.sender === 'doutora_rosa' ? cleanRosaFormatting(m.text) : `🎤 ${m.text}`,
+          emotionTag: m.emotion_tag || undefined,
+          docAttachment: m.doc_attachment,
+          userRating: m.user_rating,
+          aiModel: m.ai_model,
+          usedFallback: m.used_fallback,
+          urgencyLevel: m.urgency_level,
+        });
+        commitMessages([...messagesRef.current, toChat(user), toChat(bot)]);
+        if (bot.psychological_support_triggered) {
+          setEmotionMonitor({
+            badgeLabel: 'Apoio Psicológico Ativo (RAG/INCA)',
+            tone: 'support',
+            explanation: 'fear_symptom',
+          });
+        }
+      } catch (err) {
+        const msg = err instanceof Error && err.message ? err.message : 'Não foi possível processar o áudio.';
+        showToast('Falha no áudio', msg, 'error');
+      } finally {
+        setIsTyping(false);
+      }
+    },
+    [commitMessages, showToast],
   );
 
   const appendAssistantMessage = useCallback(
@@ -538,6 +599,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       jumpRequest,
       sendMessage,
       submitTriageToChat,
+      sendAudioMessage,
       retryLastMessage,
       toggleOfflineSimulation,
       uploadExamFile,
@@ -550,7 +612,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }),
     [
       messages, isTyping, emotionMonitor, geminiApiKey, simulateOffline, errorBannerText, jumpRequest,
-      sendMessage, submitTriageToChat, retryLastMessage, toggleOfflineSimulation, uploadExamFile, simulateSampleDocument,
+      sendMessage, submitTriageToChat, sendAudioMessage, retryLastMessage, toggleOfflineSimulation, uploadExamFile, simulateSampleDocument,
       appendAssistantMessage, jumpToDate, saveGeminiKey, clearGeminiKey, submitFeedback
     ],
   );

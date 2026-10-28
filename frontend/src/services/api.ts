@@ -137,6 +137,17 @@ export interface ApiThreadDetail {
   messages: ApiMessageResponse[];
 }
 
+export interface ApiTriageExchange {
+  user_message: ApiMessageResponse;
+  assistant_message: ApiMessageResponse;
+}
+
+export interface ApiAudioChatResponse {
+  transcript: string;
+  user_message: ApiMessageResponse;
+  reply: ApiMessageResponse;
+}
+
 export interface ApiUploadResponse {
   document_id: string;
   filename: string;
@@ -243,6 +254,19 @@ export const api = {
           attached_document_id: attached_document_id || null,
         }),
       }),
+
+    saveTriageExchange: (user_text: string, assistant_text: string, emotion_tag?: string) =>
+      request<ApiTriageExchange>('/chat/triage-exchange', {
+        method: 'POST',
+        body: JSON.stringify({ user_text, assistant_text, emotion_tag: emotion_tag || null }),
+      }),
+
+    sendAudio: (audio: Blob) => {
+      const formData = new FormData();
+      const ext = audio.type.includes('mp4') ? 'm4a' : audio.type.includes('ogg') ? 'ogg' : 'webm';
+      formData.append('file', audio, `audio.${ext}`);
+      return request<ApiAudioChatResponse>('/chat/audio', { method: 'POST', body: formData });
+    },
 
     submitFeedback: (messageId: string, rating: number, comment?: string, allowTrainingUse: boolean = false) =>
       request<{ id: string; rating: number; review_status: string }>(`/chat/messages/${messageId}/feedback`, {
