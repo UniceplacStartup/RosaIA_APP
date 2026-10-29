@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import AuthenticationFailedException, AccountLockedException
+from app.core.exceptions import AuthenticationFailedException, AccountLockedException, RosaIABaseException
 from app.db.session import AsyncSessionLocal
 from app.db.models.user import User
 
@@ -79,11 +79,11 @@ async def get_optional_current_user(
     token: Optional[str] = Depends(oauth2_scheme)
 ) -> Optional[User]:
     """
-    Permite autenticação opcional (para endpoints públicos que enriquecem dados se logado).
+    Permite autenticação opcional (para endpoints que funcionam tanto autenticados quanto em modo demonstração).
     """
     if not token:
         return None
     try:
         return await get_current_user(db=db, token=token)
-    except HTTPException:
+    except (HTTPException, RosaIABaseException, Exception):
         return None

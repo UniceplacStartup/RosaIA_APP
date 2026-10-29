@@ -14,6 +14,7 @@ import { generateLocalDoutoraRosaResponse } from '../services/ragEngine';
 import { buildAnonymizedPreview } from '../utils/anonymizer';
 import { validateExamFile } from '../utils/examFileValidator';
 import { formatClockTime } from '../utils/format';
+import { analyzeImageFileLocally } from '../utils/imageAnalyzer';
 import { safeGetStorage, safeSetStorage, STORAGE_KEYS } from '../utils/storage';
 import { api, getStoredToken } from '../services/api';
 import type { TriageInput } from '../types/triage';
@@ -360,24 +361,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      let rawContent = '';
-      const isTextualDoc = /\.(pdf|txt|doc|docx)$/i.test(file.name);
-      if (isTextualDoc) {
+      // 1. Tenta análise direta e individualizada no backend (funciona com ou sem token JWT)
+      if (!offlineRef.current) {
         try {
-          rawContent = await file.text();
-        } catch {
-          rawContent = '';
-        }
-      }
-      const preview = isTextualDoc ? buildAnonymizedPreview(rawContent) : 'Exame de imagem recebido com higienização de dados pessoais.';
-
-      const token = getStoredToken();
-      if (token && !offlineRef.current) {
-        try {
-          showToast('Analisando...', 'A Doutora Rosa está analisando o seu arquivo com proteção de dados pessoais.', 'info');
+          showToast('Analisando Imagem/Exame...', 'A Doutora Rosa está avaliando especificamente o seu arquivo.', 'info');
           setIsTyping(true);
           const uploadRes = await api.upload.uploadDocument(file);
-          showToast('🔬 Arquivo Analisado', 'A Doutora Rosa já respondeu no chat.', 'success');
+          showToast('🔬 Análise Concluída', 'A Doutora Rosa gerou a avaliação específica no chat.', 'success');
 
           if (uploadRes.user_message && uploadRes.assistant_message) {
             const u = uploadRes.user_message;
@@ -397,7 +387,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 dateGroup: a.date_group,
                 time: a.time,
                 sender: 'doutora_rosa',
-                emotionTag: a.emotion_tag || 'Análise • Doutora Rosa',
+                emotionTag: a.emotion_tag || 'Análise Específica de Imagem • Doutora Rosa',
                 text: cleanRosaFormatting(a.text),
                 aiModel: a.ai_model,
                 usedFallback: a.used_fallback,
@@ -407,26 +397,108 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          const analysis = uploadRes.educational_interpretation || uploadRes.extracted_preview || preview;
-          await sendMessage(
-            `Doutora Rosa, enviei meu arquivo (${file.name}). ${cleanRosaFormatting(analysis)}`,
-            file.name,
-          );
-          return;
+          if (uploadRes.educational_interpretation) {
+            commitMessages([
+              ...messagesRef.current,
+              {
+                id: makeMessageId('u'),
+                dateGroup: 'Hoje',
+                time: formatClockTime(),
+                sender: 'user',
+                text: `Enviei o arquivo para análise: ${file.name}`,
+                docAttachment: file.name,
+              },
+              {
+                id: makeMessageId('r'),
+                dateGroup: 'Hoje',
+                time: formatClockTime(),
+                sender: 'doutora_rosa',
+                emotionTag: 'Análise Específica de Imagem • Doutora Rosa',
+                text: cleanRosaFormatting(uploadRes.educational_interpretation),
+              },
+            ]);
+            return;
+          }
         } catch {
-          // Se upload na API falhar, cai no fluxo local
+          // Se o backend estiver offline, prossegue para a análise visual local/Gemini direto abaixo
         } finally {
           setIsTyping(false);
         }
       }
 
-      showToast('🔬 Exame Processado (LGPD)', 'Dados pessoais protegidos. Análise descritiva pronta para conversa.', 'success');
+      // 2. Caso o servidor backend esteja indisponível: analisa os bytes da imagem/DICOM diretamente no navegador
+      setIsTyping(true);
+      try {
+        const localImage = await analyzeImageFileLocally(file);
+        if (localImage.isImageOrDicom) {
+          const userMsg: ChatMessage = {
+            id: makeMessageId('u'),
+            dateGroup: 'Hoje',
+            time: formatClockTime(),
+            sender: 'user',
+            text: `Enviei a imagem para análise individual: ${file.name}`,
+            docAttachment: file.name,
+          };
+
+          let replyText = localImage.specificObjectiveReply;
+          let emotionTag = localImage.isDicom
+            ? 'Análise Técnica de Imagem DICOM • Doutora Rosa'
+            : 'Análise Visual Específica • Doutora Rosa';
+
+          if (!offlineRef.current && isGeminiKeyUsable(geminiKeyRef.current)) {
+            const visionPrompt =
+              `Analise individualmente, de forma objetiva e específica, a imagem enviada (${file.name}). ` +
+              `Não faça discurso genérico sobre BI-RADS; descreva especificamente o que você vê na imagem e seus achados técnicos.\n` +
+              `Contexto técnico extraído do arquivo:\n${localImage.technicalSummary}`;
+            const geminiReply = await askGemini(
+              geminiKeyRef.current,
+              visionPrompt,
+              localImage.jpegBase64
+                ? { base64: localImage.jpegBase64, mimeType: localImage.jpegMimeType || 'image/jpeg' }
+                : undefined,
+            );
+            if (geminiReply) {
+              replyText = geminiReply.text;
+              emotionTag = geminiReply.emotionTag;
+            }
+          }
+
+          showToast('🔬 Imagem Analisada', 'Avaliação técnica e visual específica pronta no chat.', 'success');
+          commitMessages([
+            ...messagesRef.current,
+            userMsg,
+            {
+              id: makeMessageId('r'),
+              dateGroup: 'Hoje',
+              time: formatClockTime(),
+              sender: 'doutora_rosa',
+              emotionTag,
+              text: cleanRosaFormatting(replyText),
+            },
+          ]);
+          return;
+        }
+      } catch {
+        // Continua para leitura de documento textual se não for imagem
+      } finally {
+        setIsTyping(false);
+      }
+
+      // 3. Documento textual (PDF, TXT, DOCX) em modo local
+      let rawContent = '';
+      try {
+        rawContent = await file.text();
+      } catch {
+        rawContent = '';
+      }
+      const preview = buildAnonymizedPreview(rawContent);
+      showToast('📄 Documento Processado (LGPD)', 'Dados pessoais protegidos. Análise pronta no chat.', 'success');
       await sendMessage(
-        `Doutora Rosa, enviei meu exame (${file.name}). Descrição desidentificada: "${preview || 'Exame de imagem mamária anexado para leitura educativa'}". Pode me explicar os achados descritivos com calma para que eu tire minhas dúvidas?`,
+        `Doutora Rosa, enviei meu documento (${file.name}). Conteúdo desidentificado: "${preview || 'Documento anexado para análise'}". Pode analisar de forma objetiva os achados descritos?`,
         file.name,
       );
     },
-    [sendMessage, showToast],
+    [commitMessages, sendMessage, showToast],
   );
 
   const simulateSampleDocument = useCallback(
@@ -444,7 +516,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const realSymptoms = input.symptoms.filter((s) => s.toLowerCase() !== 'nenhum sintoma');
       const symptomsText = realSymptoms.length > 0 ? realSymptoms.join(', ') : 'Nenhum sintoma observado';
       const ageLabel = AGE_RANGE_OPTIONS.find((o) => o.value === input.ageRange)?.label || input.ageRange;
-      
+
       let familyText = 'Não informado';
       if (input.familyHistory === 'sim') familyText = 'Sim (Mãe, irmã ou filha)';
       else if (input.familyHistory === 'nao') familyText = 'Não';

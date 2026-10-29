@@ -88,10 +88,13 @@ async def generate(
     ]
     if audio is not None and contents:
         audio_bytes, audio_mime = audio
-        contents[-1].parts.append(types.Part.from_bytes(data=audio_bytes, mime_type=audio_mime))
+        contents[-1].parts.insert(0, types.Part.from_bytes(data=audio_bytes, mime_type=audio_mime))
     if images and contents:
-        for img_bytes, img_mime in images:
-            contents[-1].parts.append(types.Part.from_bytes(data=img_bytes, mime_type=img_mime))
+        image_parts = [
+            types.Part.from_bytes(data=img_bytes, mime_type=img_mime)
+            for img_bytes, img_mime in images
+        ]
+        contents[-1].parts = image_parts + list(contents[-1].parts)
     config_kwargs = dict(system_instruction=system_instruction, temperature=temperature)
     if response_schema is not None:
         config_kwargs.update(
@@ -99,15 +102,34 @@ async def generate(
         )
     config = types.GenerateContentConfig(**config_kwargs)
 
-    models = [settings.GEMINI_MODEL]
+    alias_map = {
+        "gemini-3.1-flash-lite": "gemini-2.5-flash",
+        "gemini-3.5-flash-lite": "gemini-2.5-flash-lite",
+        "gemini-3.5-flash": "gemini-2.5-flash",
+    }
+    raw_candidates = [settings.GEMINI_MODEL]
     if settings.GEMINI_FALLBACK_MODEL:
-        for fb in settings.GEMINI_FALLBACK_MODEL.split(","):
-            clean_fb = fb.strip()
-            if clean_fb and clean_fb not in models:
-                models.append(clean_fb)
-    for safety_net in ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview"]:
-        if safety_net not in models:
-            models.append(safety_net)
+        raw_candidates.extend(
+            fb.strip() for fb in settings.GEMINI_FALLBACK_MODEL.split(",") if fb.strip()
+        )
+    raw_candidates.extend([
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite-preview",
+        "gemini-2.0-flash",
+    ])
+    models: List[str] = []
+    for candidate in raw_candidates:
+        resolved = alias_map.get(candidate, candidate)
+        if resolved and resolved not in models:
+            models.append(resolved)
+
+    call_timeout = (
+        max(float(settings.GEMINI_TIMEOUT_SECONDS), 25.0)
+        if (images or audio)
+        else float(settings.GEMINI_TIMEOUT_SECONDS)
+    )
 
     attempts = 0
     last_error: Optional[BaseException] = None
@@ -122,7 +144,7 @@ async def generate(
                     client.aio.models.generate_content(
                         model=model, contents=contents, config=config
                     ),
-                    timeout=settings.GEMINI_TIMEOUT_SECONDS,
+                    timeout=call_timeout,
                 )
                 text = (response.text or "").strip()
                 if not text:

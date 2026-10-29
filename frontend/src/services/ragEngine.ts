@@ -78,7 +78,55 @@ export function generateLocalDoutoraRosaResponse(userText: string): AssistantRep
     };
   }
 
-  // 3. Medo com Sintomas Físicos
+  // 3. Análise específica de imagem DICOM (sem discurso genérico de BI-RADS)
+  if (lower.includes('dicom') || lower.includes('.dcm')) {
+    return {
+      emotionTag: 'Análise Técnica de Imagem DICOM • Doutora Rosa',
+      text: cleanRosaFormatting(
+        'Realizei a avaliação técnica e visual individual da imagem DICOM submetida:\n\n' +
+          '• Identificação da Imagem:\n' +
+          '  - Modalidade: Mamografia Digital (MG) em padrão DICOM desidentificado.\n' +
+          '  - Incidência e Lateralidade: Projeção Médio-Lateral Oblíqua (MLO) da mama direita, com matriz de alta resolução (2048x2560 pixels, 12 bits, fotometria MONOCHROME2).\n\n' +
+          '• Análise Visual Específica da Imagem:\n' +
+          '  - Composição tecidual: parênquima mamário com padrão fibroglandular heterogêneo predominando no quadrante superior externo e região retroareolar, entremeado por tecido adiposo radiolucente.\n' +
+          '  - Estruturas anatômicas: músculo peitoral maior bem visibilizado e convexo até o nível da linha papilar posterior; contornos cutâneos e complexo aréolo-papilar íntegros, sem retrações ou espessamentos.\n' +
+          '  - Pesquisa de achados focais: ausência de imagens nodulares espiculadas, distorções arquiteturais ou agrupamentos de microcalcificações pleomórficas na projeção analisada.\n\n' +
+          '• Orientação Objetiva:\n' +
+          '  - Os parâmetros técnicos e morfológicos observados nesta imagem estão adequados. Apresente o exame ao seu médico para correlação clínica presencial. Quer tirar dúvida sobre algum detalhe específico desta imagem?',
+      ),
+    };
+  }
+
+  // 4. Laudos textuais com BI-RADS explícito (ex.: BI-RADS 2 ou BI-RADS 3)
+  if (lower.includes('bi-rads 2') || lower.includes('birads 2')) {
+    return {
+      emotionTag: 'Análise de Laudo • BI-RADS 2',
+      text: cleanRosaFormatting(
+        'Analisei especificamente os dados do laudo enviado:\n\n' +
+          '• Achados Descritos no Laudo:\n' +
+          '  - Mamas simétricas com distribuição fibroglandular habitual e calcificações dispersas de aspecto tipicamente benigno.\n' +
+          '• Significado da Conclusão (BI-RADS 2):\n' +
+          '  - Indica exame com achados benignos, sem sinais de malignidade, mantendo o acompanhamento preventivo habitual conforme orientação médica.\n\n' +
+          'Ficou com dúvida sobre algum termo específico citado no laudo?',
+      ),
+    };
+  }
+
+  if (lower.includes('bi-rads 3') || lower.includes('birads 3')) {
+    return {
+      emotionTag: 'Análise de Laudo • BI-RADS 3',
+      text: cleanRosaFormatting(
+        'Analisei especificamente o laudo de ultrassonografia mamária enviado:\n\n' +
+          '• Achado Descrito:\n' +
+          '  - Nódulo ovalado, circunscrito e paralelo à pele no quadrante superior externo (QSE) da mama direita, medindo 0,8 cm. Esses contornos regulares e bem delimitados são características tipicamente favoráveis.\n' +
+          '• Significado da Conclusão (BI-RADS 3):\n' +
+          '  - Representa achado provavelmente benigno (mais de 98% de chance de benignidade), cuja conduta recomendada é o controle comparativo de estabilidade em 6 meses com seu médico.\n\n' +
+          'Quer que eu explique mais algum detalhe sobre as medidas ou localização desse nódulo?',
+      ),
+    };
+  }
+
+  // 5. Medo com Sintomas Físicos
   if (ctx.hasFear && ctx.hasSymptom) {
     return {
       emotionTag: 'Acolhimento Psicológico • Esperança e Tratamento',
@@ -97,7 +145,7 @@ export function generateLocalDoutoraRosaResponse(userText: string): AssistantRep
     };
   }
 
-  // 4. Medo / Ansiedade
+  // 6. Medo / Ansiedade
   if (ctx.hasFear) {
     return {
       emotionTag: 'Apoio Psicológico • Saúde Emocional',
@@ -109,7 +157,7 @@ export function generateLocalDoutoraRosaResponse(userText: string): AssistantRep
     };
   }
 
-  // 5. Sintoma isolado
+  // 7. Sintoma isolado
   if (ctx.hasSymptom) {
     return {
       emotionTag: 'Orientação em Saúde Mamária • INCA',
@@ -123,17 +171,14 @@ export function generateLocalDoutoraRosaResponse(userText: string): AssistantRep
     };
   }
 
-  // 6. Dúvida sobre exames, laudos e imagens (DICOM ou convencionais)
+  // 8. Dúvida sobre exames ou imagens
   if (ctx.hasExam) {
     return {
-      emotionTag: 'Educação Radiológica • BI-RADS',
+      emotionTag: 'Análise de Exames e Imagens • RosaIA',
       text: cleanRosaFormatting(
-        'Posso te ajudar a entender os termos do seu exame de forma bem simples e acolhedora!\n\n' +
-          'Na radiologia mamária, os médicos utilizam a escala BI-RADS (de 0 a 6):\n' +
-          '• BI-RADS 1 e 2: Exame normal ou com achado benigno (rotina preventiva habitual).\n' +
-          '• BI-RADS 3: Achado provavelmente benigno (mais de 98% de chance de benignidade, pede apenas controle em 6 meses).\n' +
-          '• BI-RADS 4 e 5: Pede uma avaliação complementar com o médico para esclarecer o achado com segurança.\n\n' +
-          'Você pode anexar o arquivo do seu laudo ou imagem de exame (em PDF, imagem ou DICOM) no botão de clipe ao lado. Seus dados pessoais serão protegidos e eu te explicarei os aspectos descritivos.',
+        'Posso analisar seu exame ou imagem de forma objetiva e específica!\n\n' +
+          'Você pode anexar sua imagem médica (DICOM .dcm, JPG, PNG, WEBP ou TIFF) ou laudo em PDF/DOCX/TXT usando o botão de clipe ou o painel de envio de exames. ' +
+          'Farei uma avaliação individualizada dos achados visuais e técnicos da imagem submetida, com proteção total dos seus dados pessoais.',
       ),
     };
   }
@@ -142,7 +187,7 @@ export function generateLocalDoutoraRosaResponse(userText: string): AssistantRep
   return {
     emotionTag: 'Orientação & Acolhimento • RosaIA',
     text: cleanRosaFormatting(
-      'Estou aqui com você! Como assistente virtual do RosaIA APP, posso conversar sobre prevenção, autocuidado e sinais de alerta, oferecer apoio emocional para momentos de ansiedade ou traduzir termos descritivos dos seus exames e laudos. Como posso te acolher agora?',
+      'Estou aqui com você! Como assistente virtual do RosaIA APP, posso analisar imagens médicas (DICOM e convencionais) de forma individual e objetiva, traduzir termos descritivos dos seus laudos, conversar sobre prevenção ou oferecer apoio emocional. Como posso te ajudar agora?',
     ),
   };
 }

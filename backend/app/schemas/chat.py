@@ -1,12 +1,24 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import Any, List, Optional
+from pydantic import BaseModel, Field, field_validator
 
 
 class MessageSendRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=4000, description="Texto digitado pela usuária")
     attached_document_id: Optional[uuid.UUID] = Field(default=None, description="ID de laudo previamente anexado")
+
+    @field_validator("attached_document_id", mode="before")
+    @classmethod
+    def coerce_optional_uuid(cls, v: Any) -> Optional[uuid.UUID]:
+        if v is None or v == "":
+            return None
+        if isinstance(v, uuid.UUID):
+            return v
+        try:
+            return uuid.UUID(str(v))
+        except (ValueError, TypeError):
+            return None
 
 
 class MessageFeedbackCreate(BaseModel):

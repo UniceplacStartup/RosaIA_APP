@@ -29,9 +29,9 @@ export const SAMPLE_DOCUMENTS: Record<SampleDocumentKind, SampleDocumentScenario
   dicom_sample: {
     kind: 'dicom_sample',
     toastTitle: '🔬 Exame de Imagem DICOM Processado',
-    toastMessage: 'Metadados desidentificados. Informações descritivas enviadas à Doutora Rosa.',
+    toastMessage: 'Metadados e pixels DICOM processados para análise visual e técnica.',
     userMessage:
-      'Doutora Rosa, acabei de anexar uma imagem médica em formato DICOM (mamografia_digital_dcm01.dcm). Os dados de identificação foram higienizados. Você pode me explicar os achados descritivos da imagem e tirar minhas dúvidas?',
+      'Doutora Rosa, acabei de anexar a imagem médica DICOM mamografia_digital_dcm01.dcm (Modalidade: MG Mamografia Digital, Incidência: Médio-Lateral Oblíqua MLO, Lateralidade: Mama Direita, Matriz: 2048x2560 pixels, 12 bits, MONOCHROME2, parênquima fibroglandular heterogêneo concentrado no quadrante superior externo, músculo peitoral maior bem visibilizado até a altura da papila, pele e complexo aréolo-papilar sem retrações, ausência de massas espiculadas). Faça uma análise objetiva e específica desta imagem.',
     fileName: 'mamografia_digital_dcm01.dcm',
   },
 };

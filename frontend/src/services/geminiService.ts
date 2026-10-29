@@ -1,11 +1,10 @@
 import type { AssistantReply } from '../types/chat';
 import { cleanRosaFormatting } from '../utils/triageClassifier';
 
-const GEMINI_MODEL = 'gemini-3.1-flash-lite';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
 
 const SYSTEM_PROMPT =
-  'Você é a Doutora Rosa do RosaIA APP (UNICEPLAC). Responda em português com extremo calor humano, acolhimento, empatia, sinceridade e clareza. Reforce que alterações nas mamas são majoritariamente benignas (cerca de 80%) e que o câncer de mama tem altas taxas de cura (>95%) na detecção precoce. Lembre sempre que você não substitui uma consulta médica presencial. REGRA ESTRITA DE FORMATAÇÃO: NUNCA use asteriscos (*) nem hashtags (#). Mensagem da usuária: ';
+  'Você é a Doutora Rosa do RosaIA APP (UNICEPLAC). Responda em português com calor humano, acolhimento, empatia, sinceridade e objetividade. Quando analisar uma imagem médica (DICOM ou convencional) ou qualquer outra imagem, avalie a imagem individualmente, descrevendo de forma objetiva e específica o que está visível nela (modalidade, região anatômica, incidência, padrão de densidade/ecogenicidade/atenuação, distribuição nos quadrantes e achados aparentes), SEM dar palestras genéricas sobre BI-RADS. Lembre sempre que você não substitui uma consulta médica presencial. REGRA ESTRITA DE FORMATAÇÃO: NUNCA use asteriscos (*) nem hashtags (#). Mensagem da usuária: ';
 
 interface GeminiGenerateResponse {
   candidates?: Array<{
@@ -23,30 +22,50 @@ export function isGeminiKeyUsable(apiKey: string): boolean {
 }
 
 /**
- * Integração opcional com o Google AI Studio (Gemini).
+ * Integração opcional com o Google AI Studio (Gemini), com suporte multimodal (texto + imagem).
  * Retorna `null` em qualquer falha (rede, cota, chave inválida) para que o
- * chamador use o motor RAG local como contingência.
- * A chave é enviada via cabeçalho (nunca na URL).
+ * chamador use a análise específica local como contingência.
  * Limpa asteriscos e hashtags da resposta.
  */
-export async function askGemini(apiKey: string, userText: string): Promise<AssistantReply | null> {
-  try {
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey.trim(),
+export async function askGemini(
+  apiKey: string,
+  userText: string,
+  inlineImage?: { base64: string; mimeType: string },
+): Promise<AssistantReply | null> {
+  const parts: Array<Record<string, unknown>> = [];
+  if (inlineImage?.base64) {
+    parts.push({
+      inline_data: {
+        mime_type: inlineImage.mimeType || 'image/jpeg',
+        data: inlineImage.base64,
       },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: SYSTEM_PROMPT + userText }] }],
-      }),
     });
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as GeminiGenerateResponse;
-    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return aiText ? { emotionTag: 'Gemini API Live • Doutora Rosa', text: cleanRosaFormatting(aiText) } : null;
-  } catch {
-    return null;
   }
+  parts.push({ text: SYSTEM_PROMPT + userText });
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey.trim(),
+        },
+        body: JSON.stringify({
+          contents: [{ parts }],
+        }),
+      });
+      if (!response.ok) continue;
+
+      const data = (await response.json()) as GeminiGenerateResponse;
+      const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (aiText) {
+        return { emotionTag: 'Gemini Vision Live • Doutora Rosa', text: cleanRosaFormatting(aiText) };
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }

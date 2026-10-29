@@ -46,7 +46,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
@@ -185,6 +185,8 @@ export interface ApiTriageResponse {
   priority_score: number;
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ==============================================================================
 // Métodos da API
 // ==============================================================================
@@ -250,14 +252,19 @@ export const api = {
   chat: {
     getHistory: () => request<ApiThreadDetail>('/chat/messages'),
 
-    sendMessage: (content: string, attached_document_id?: string | null) =>
-      request<ApiMessageResponse>('/chat/send', {
+    sendMessage: (content: string, attached_document_id?: string | null) => {
+      const validUuid =
+        typeof attached_document_id === 'string' && UUID_REGEX.test(attached_document_id.trim())
+          ? attached_document_id.trim()
+          : null;
+      return request<ApiMessageResponse>('/chat/send', {
         method: 'POST',
         body: JSON.stringify({
           content,
-          attached_document_id: attached_document_id || null,
+          attached_document_id: validUuid,
         }),
-      }),
+      });
+    },
 
     saveTriageExchange: (user_text: string, assistant_text: string, emotion_tag?: string) =>
       request<ApiTriageExchange>('/chat/triage-exchange', {
