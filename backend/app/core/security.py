@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import re
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
@@ -112,6 +113,40 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica se a senha em texto puro confere com o hash armazenado."""
     return pwd_context.verify(plain_password, hashed_password)
+
+
+# Alfabeto sem caracteres ambíguos (0/O/1/I) para facilitar anotação pela usuária
+_RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generate_recovery_code() -> str:
+    """
+    Gera código de recuperação criptograficamente seguro no formato XXXX-XXXX-XXXX-XXXX
+    (16 caracteres em base32 legível = 80 bits de entropia).
+    """
+    groups = [
+        "".join(secrets.choice(_RECOVERY_ALPHABET) for _ in range(4))
+        for _ in range(4)
+    ]
+    return "-".join(groups)
+
+
+def normalize_recovery_code(code: str) -> str:
+    """Remove hífens/espaços e padroniza em maiúsculas para validação tolerante."""
+    return re.sub(r"[^A-Za-z0-9]", "", code or "").upper()
+
+
+def hash_recovery_code(code: str) -> str:
+    """Gera hash Argon2id do código de recuperação normalizado."""
+    return hash_password(normalize_recovery_code(code))
+
+
+def verify_recovery_code(plain_code: str, hashed_code: str) -> bool:
+    """Verifica se o código de recuperação informado corresponde ao hash armazenado."""
+    normalized = normalize_recovery_code(plain_code)
+    if not normalized:
+        return False
+    return verify_password(normalized, hashed_code)
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:

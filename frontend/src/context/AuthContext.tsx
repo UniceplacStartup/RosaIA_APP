@@ -18,6 +18,25 @@ export interface RegisterPayload {
   acceptedTerms?: boolean;
 }
 
+export interface ResetPasswordWithCodeInput {
+  identifier: string;
+  recoveryCode: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ResetPasswordWithCodeResult {
+  ok: boolean;
+  newRecoveryCode?: string;
+  error?: string;
+}
+
+export interface GenerateRecoveryCodeResult {
+  ok: boolean;
+  code?: string;
+  error?: string;
+}
+
 interface AuthContextValue {
   user: User;
   isAuthenticated: boolean;
@@ -25,10 +44,18 @@ interface AuthContextValue {
   setAuthView: (view: AuthView) => void;
   /** Incrementa a cada exclusão de conta ou logout; outros contextos reagem limpando seus dados. */
   accountResetToken: number;
+  /** Código de recuperação recém-gerado no cadastro para exibição única em modal. */
+  pendingRecoveryCode: string | null;
+  clearPendingRecoveryCode: () => void;
+  /** True quando uma conta existente ainda não cadastrou código de recuperação. */
+  needsRecoveryCodeSetup: boolean;
+  dismissRecoveryCodeSetup: () => void;
   login: (email: string, password: string) => Promise<boolean>;
   loginDemo: () => void;
   register: (payload: RegisterPayload) => Promise<boolean>;
   requestPasswordReset: (email: string) => Promise<boolean>;
+  resetPasswordWithCode: (payload: ResetPasswordWithCodeInput) => Promise<ResetPasswordWithCodeResult>;
+  generateRecoveryCode: (currentPassword?: string) => Promise<GenerateRecoveryCodeResult>;
   logout: () => void;
   deleteAccount: (confirmation: string) => boolean;
 }
@@ -61,6 +88,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [authView, setAuthView] = useState<AuthView>('welcome');
   const [accountResetToken, setAccountResetToken] = useState(0);
+  const [pendingRecoveryCode, setPendingRecoveryCode] = useState<string | null>(null);
+  const [needsRecoveryCodeSetup, setNeedsRecoveryCodeSetup] = useState(false);
+
+  const clearPendingRecoveryCode = useCallback(() => {
+    setPendingRecoveryCode(null);
+  }, []);
+
+  const dismissRecoveryCodeSetup = useCallback(() => {
+    setNeedsRecoveryCodeSetup(false);
+  }, []);
 
   const enterApp = useCallback(
     (nextUser: User, welcomeMessage: string) => {
@@ -82,6 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearUserSessionStorage(currentEmail);
     setUser(DEMO_USER);
+    setPendingRecoveryCode(null);
+    setNeedsRecoveryCodeSetup(false);
     setAccountResetToken((token) => token + 1);
     setIsAuthenticated(false);
     setAuthView('login');
@@ -95,14 +134,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api.auth
         .getProfile()
         .then((res) => {
-          if (res && res.user) {
-            const apiUser = res.user;
+          const apiUser = res?.user ?? res;
+          if (apiUser && apiUser.email) {
             setUser((prev) => {
               const updated: User = {
                 fullName: apiUser.full_name || apiUser.fullName || prev.fullName,
                 email: apiUser.email || prev.email,
                 cpfMasked: apiUser.cpf_masked || apiUser.cpfMasked || prev.cpfMasked,
                 cpfHash: apiUser.cpf_hash || apiUser.cpfHash || prev.cpfHash,
+                hasRecoveryCode:
+                  typeof apiUser.has_recovery_code === 'boolean'
+                    ? apiUser.has_recovery_code
+                    : prev.hasRecoveryCode,
               };
               safeSetStorage(STORAGE_KEYS.user, updated);
               return updated;
@@ -133,12 +176,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         const apiUser = response.user;
+        const hasRecoveryCode =
+          typeof apiUser.has_recovery_code === 'boolean' ? apiUser.has_recovery_code : true;
         const loggedUser: User = {
           fullName: apiUser.full_name || apiUser.fullName || user.fullName,
           email: apiUser.email || cleanIdentifier,
           cpfMasked: apiUser.cpf_masked || apiUser.cpfMasked || '***.***.***-**',
           cpfHash: apiUser.cpf_hash || apiUser.cpfHash || '',
+          hasRecoveryCode,
         };
+
+        if (apiUser.needs_recovery_code) {
+          setNeedsRecoveryCodeSetup(true);
+        }
 
         enterApp(loggedUser, 'Sessão iniciada com sucesso!');
         return true;
@@ -198,11 +248,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: apiUser.email || email,
           cpfMasked: apiUser.cpf_masked || apiUser.cpfMasked || maskCpfLgpd(cleanCpf),
           cpfHash: apiUser.cpf_hash || apiUser.cpfHash || simulateBlindIndex(cleanCpf),
+          hasRecoveryCode: true,
         };
+
+        if (response.recovery_code) {
+          setPendingRecoveryCode(response.recovery_code);
+        }
 
         enterApp(
           newUser,
-          'Cadastro realizado com sucesso! Seja bem-vinda ao RosaIA.',
+          'Cadastro realizado com sucesso! Salve seu código de recuperação.',
         );
         return true;
       } catch (err: unknown) {
@@ -245,6 +300,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
 
+  const resetPasswordWithCode = useCallback(
+    async ({
+      identifier,
+      recoveryCode,
+      newPassword,
+      confirmPassword,
+    }: ResetPasswordWithCodeInput): Promise<ResetPasswordWithCodeResult> => {
+      try {
+        const res = await api.auth.resetPasswordWithCode({
+          identifier: identifier.trim(),
+          recovery_code: recoveryCode.trim(),
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        });
+        showToast('Senha Redefinida', 'Sua senha foi atualizada. Guarde seu novo código de recuperação!', 'success');
+        return { ok: true, newRecoveryCode: res.new_recovery_code };
+      } catch (err: unknown) {
+        const msg =
+          err instanceof ApiError
+            ? err.message
+            : 'Não foi possível redefinir a senha. Verifique os dados informados.';
+        showToast('Falha na Redefinição', msg, 'error');
+        return { ok: false, error: msg };
+      }
+    },
+    [showToast],
+  );
+
+  const generateRecoveryCode = useCallback(
+    async (currentPassword?: string): Promise<GenerateRecoveryCodeResult> => {
+      try {
+        const res = await api.auth.generateRecoveryCode(currentPassword);
+        setUser((prev) => {
+          const updated: User = { ...prev, hasRecoveryCode: true };
+          safeSetStorage(STORAGE_KEYS.user, updated);
+          return updated;
+        });
+        setNeedsRecoveryCodeSetup(false);
+        showToast('Código Gerado', 'Salve seu código de recuperação em um local seguro.', 'success');
+        return { ok: true, code: res.recovery_code };
+      } catch (err: unknown) {
+        const msg =
+          err instanceof ApiError
+            ? err.message
+            : 'Não foi possível gerar o código de recuperação no momento.';
+        showToast('Erro ao Gerar Código', msg, 'error');
+        return { ok: false, error: msg };
+      }
+    },
+    [showToast],
+  );
+
+
   const deleteAccount = useCallback(
     (confirmation: string): boolean => {
       if (confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_WORD) {
@@ -254,6 +362,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearStoredToken();
       clearAllStorage();
       setUser(DEMO_USER);
+      setPendingRecoveryCode(null);
+      setNeedsRecoveryCodeSetup(false);
       setAccountResetToken((token) => token + 1);
       setIsAuthenticated(false);
       setAuthView('welcome');
@@ -270,14 +380,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authView,
       setAuthView,
       accountResetToken,
+      pendingRecoveryCode,
+      clearPendingRecoveryCode,
+      needsRecoveryCodeSetup,
+      dismissRecoveryCodeSetup,
       login,
       loginDemo,
       register,
       requestPasswordReset,
+      resetPasswordWithCode,
+      generateRecoveryCode,
       logout,
       deleteAccount,
     }),
-    [user, isAuthenticated, authView, accountResetToken, login, loginDemo, register, requestPasswordReset, logout, deleteAccount],
+    [
+      user,
+      isAuthenticated,
+      authView,
+      accountResetToken,
+      pendingRecoveryCode,
+      clearPendingRecoveryCode,
+      needsRecoveryCodeSetup,
+      dismissRecoveryCodeSetup,
+      login,
+      loginDemo,
+      register,
+      requestPasswordReset,
+      resetPasswordWithCode,
+      generateRecoveryCode,
+      logout,
+      deleteAccount,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -52,6 +52,34 @@ export default function ProfileSection() {
           </p>
         </div>
 
+        <div className="space-y-2.5 text-xs bg-white p-4 rounded-2xl border border-rosa-200">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="font-bold text-rosa-900">🔐 Código de Recuperação de Senha</div>
+            {user.hasRecoveryCode ? (
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                Ativo
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-bold">
+                Não configurado
+              </span>
+            )}
+          </div>
+          <p className="text-gray-600 leading-relaxed">
+            {user.hasRecoveryCode
+              ? 'Sua conta possui um código de recuperação ativo (salvo apenas como hash criptográfico). Caso tenha perdido ou queira trocar, gere um novo abaixo.'
+              : 'Configure um código de recuperação para poder redefinir sua senha com autonomia caso esqueça.'}
+          </p>
+          <button
+            id="btnOpenRecoveryCodeModal"
+            type="button"
+            onClick={() => openModal('recoveryCode')}
+            className="w-full sm:w-auto py-2 px-4 rounded-full bg-rosa-800 hover:bg-rosa-900 text-white font-bold text-xs transition"
+          >
+            {user.hasRecoveryCode ? '🔑 Gerar Novo Código de Recuperação' : '🔐 Gerar Código de Recuperação'}
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             id="btnExportarDadosLgpd"

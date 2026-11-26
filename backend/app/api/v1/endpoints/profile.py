@@ -53,6 +53,7 @@ async def get_profile(
         cpf_masked=masked,
         role=current_user.role,
         is_active=current_user.is_active,
+        has_recovery_code=bool(current_user.recovery_code_hash),
         terms_accepted_at=terms_dt_str
     )
 
