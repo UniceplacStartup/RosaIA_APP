@@ -10,10 +10,15 @@ import ToastContainer from './components/layout/ToastContainer';
 import DeleteAccountModal from './components/modals/DeleteAccountModal';
 import GeminiConfigModal from './components/modals/GeminiConfigModal';
 import LogoutModal from './components/modals/LogoutModal';
+import RecoveryCodeModal from './components/modals/RecoveryCodeModal';
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, pendingRecoveryCode, needsRecoveryCodeSetup } = useAuth();
   const { isModalOpen, closeModal } = useUi();
+
+  const showRecoveryModal =
+    isAuthenticated &&
+    (isModalOpen('recoveryCode') || pendingRecoveryCode !== null || needsRecoveryCodeSetup);
 
   return (
     <>
@@ -28,6 +33,7 @@ function AppContent() {
       {isAuthenticated && isModalOpen('deleteAccount') && (
         <DeleteAccountModal onClose={() => closeModal('deleteAccount')} />
       )}
+      {showRecoveryModal && <RecoveryCodeModal onClose={() => closeModal('recoveryCode')} />}
     </>
   );
 }

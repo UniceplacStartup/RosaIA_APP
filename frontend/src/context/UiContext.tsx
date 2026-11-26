@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 import type { ReactNode } from 'react';
 import type { AppTab } from '../types/ui';
 
-type ModalName = 'gemini' | 'logout' | 'deleteAccount';
+type ModalName = 'gemini' | 'logout' | 'deleteAccount' | 'recoveryCode';
 
 interface UiContextValue {
   activeTab: AppTab;

@@ -9,6 +9,7 @@ class UserProfileResponse(BaseModel):
     cpf_masked: str
     role: str
     is_active: bool
+    has_recovery_code: bool = False
     terms_accepted_at: Optional[str] = None
 
 

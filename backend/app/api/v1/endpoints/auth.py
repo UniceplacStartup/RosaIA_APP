@@ -1,19 +1,26 @@
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_current_user, get_db
+from app.db.models.user import User
 from app.schemas.auth import (
-    UserRegisterRequest,
-    UserLoginRequest,
-    TokenResponse,
+    GenerateRecoveryCodeRequest,
+    GenerateRecoveryCodeResponse,
     PasswordResetRequest,
-    PasswordResetResponse
+    PasswordResetResponse,
+    PasswordResetWithCodeRequest,
+    PasswordResetWithCodeResponse,
+    TokenResponse,
+    UserLoginRequest,
+    UserRegisterRequest,
 )
 from app.services.auth_service import (
-    register_user,
     authenticate_user,
     check_cpf_exists,
     check_email_exists,
+    generate_or_rotate_recovery_code,
+    register_user,
+    reset_password_with_recovery_code,
 )
 from app.core.logging import log_security_event
 from app.core.security import hash_ip
@@ -97,6 +104,54 @@ async def recover_password(
     )
     return PasswordResetResponse(
         message="Se os dados informados constarem em nossa base, as instruções de recuperação serão encaminhadas com segurança."
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=PasswordResetWithCodeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Redefinição de senha com código de recuperação (sem serviços externos)"
+)
+async def reset_password(
+    request: Request,
+    payload: PasswordResetWithCodeRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Redefine a senha da conta utilizando o código de recuperação de uso único.
+    Após o uso, o código antigo é invalidado e um novo código é gerado automaticamente.
+    """
+    client_ip = request.client.host if request.client else "0.0.0.0"
+    return await reset_password_with_recovery_code(
+        db=db,
+        payload=payload,
+        client_ip=client_ip,
+    )
+
+
+@router.post(
+    "/recovery-code",
+    response_model=GenerateRecoveryCodeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Gera ou substitui o código de recuperação da conta autenticada"
+)
+async def generate_recovery_code_endpoint(
+    request: Request,
+    payload: GenerateRecoveryCodeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gera o código de recuperação para contas existentes que ainda não possuem um,
+    ou substitui o código atual mediante confirmação da senha.
+    """
+    client_ip = request.client.host if request.client else "0.0.0.0"
+    return await generate_or_rotate_recovery_code(
+        db=db,
+        user=current_user,
+        current_password=payload.current_password,
+        client_ip=client_ip,
     )
 
 

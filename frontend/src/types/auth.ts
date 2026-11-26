@@ -6,6 +6,8 @@ export interface User {
   cpfMasked: string;
   /** Blind Index (HMAC-SHA256 simulado) do CPF */
   cpfHash: string;
+  /** Indica se a conta já possui um código de recuperação configurado. */
+  hasRecoveryCode?: boolean;
 }
 
 export interface Credentials {

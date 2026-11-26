@@ -25,6 +25,9 @@ class User(Base):
 
     # Hash de senha com Argon2id
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Código de recuperação de uso único (salvo apenas como hash Argon2id)
+    recovery_code_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    recovery_code_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="patient")
 
     # OWASP A07: Proteção contra força bruta

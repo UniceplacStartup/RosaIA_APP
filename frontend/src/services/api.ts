@@ -105,12 +105,25 @@ export interface ApiUser {
   cpfHash?: string;
   cpf_hash?: string;
   role?: string;
+  has_recovery_code?: boolean;
+  needs_recovery_code?: boolean;
 }
 
 export interface AuthResponse {
   access_token: string;
   token_type: string;
   user: ApiUser;
+  recovery_code?: string | null;
+}
+
+export interface PasswordResetWithCodeResponse {
+  message: string;
+  new_recovery_code: string;
+}
+
+export interface GenerateRecoveryCodeResponse {
+  recovery_code: string;
+  message: string;
 }
 
 export interface ApiMessageResponse {
@@ -227,12 +240,29 @@ export const api = {
       return res;
     },
 
-    getProfile: () => request<{ user: ApiUser }>('/profile/me'),
+    getProfile: () => request<ApiUser & { user?: ApiUser }>('/profile'),
 
     recoverPassword: (email: string) =>
       request<{ message: string }>('/auth/recover', {
         method: 'POST',
         body: JSON.stringify({ email }),
+      }),
+
+    resetPasswordWithCode: (payload: {
+      identifier: string;
+      recovery_code: string;
+      new_password: string;
+      confirm_password?: string;
+    }) =>
+      request<PasswordResetWithCodeResponse>('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    generateRecoveryCode: (current_password?: string) =>
+      request<GenerateRecoveryCodeResponse>('/auth/recovery-code', {
+        method: 'POST',
+        body: JSON.stringify({ current_password: current_password || null }),
       }),
 
     checkCpf: (cpf: string) => {

@@ -5,6 +5,20 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.core.security import validate_cpf_modulo_11
 
 
+def validate_owasp_password(v: str) -> str:
+    if len(v) < 8:
+        raise ValueError("A senha deve ter no mínimo 8 caracteres.")
+    if not re.search(r"[A-Z]", v):
+        raise ValueError("A senha deve conter pelo menos uma letra maiúscula.")
+    if not re.search(r"[a-z]", v):
+        raise ValueError("A senha deve conter pelo menos uma letra minúscula.")
+    if not re.search(r"[0-9]", v):
+        raise ValueError("A senha deve conter pelo menos um número.")
+    if not re.search(r"[^A-Za-z0-9]", v):
+        raise ValueError("A senha deve conter pelo menos um caractere especial.")
+    return v
+
+
 class UserRegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=5, max_length=150, description="Nome e sobrenome completos")
     email: EmailStr = Field(..., description="E-mail válido da usuária")
@@ -31,17 +45,7 @@ class UserRegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_owasp(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("A senha deve ter no mínimo 8 caracteres.")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("A senha deve conter pelo menos uma letra maiúscula.")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("A senha deve conter pelo menos uma letra minúscula.")
-        if not re.search(r"[0-9]", v):
-            raise ValueError("A senha deve conter pelo menos um número.")
-        if not re.search(r"[^A-Za-z0-9]", v):
-            raise ValueError("A senha deve conter pelo menos um caractere especial.")
-        return v
+        return validate_owasp_password(v)
 
 
 class UserLoginRequest(BaseModel):
@@ -61,6 +65,10 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: Dict[str, Any]
+    recovery_code: Optional[str] = Field(
+        default=None,
+        description="Código de recuperação exibido uma única vez no cadastro."
+    )
 
 
 UserAuthResponse = TokenResponse
@@ -81,3 +89,35 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetResponse(BaseModel):
     message: str
     anti_enumeration_active: bool = True
+
+
+class PasswordResetWithCodeRequest(BaseModel):
+    identifier: str = Field(..., min_length=3, max_length=255, description="E-mail ou CPF cadastrado")
+    recovery_code: str = Field(..., min_length=8, max_length=64, description="Código de recuperação da conta")
+    new_password: str = Field(..., min_length=8, max_length=128, description="Nova senha no padrão OWASP")
+    confirm_password: Optional[str] = Field(default=None, description="Confirmação da nova senha")
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        return validate_owasp_password(v)
+
+
+class PasswordResetWithCodeResponse(BaseModel):
+    message: str
+    new_recovery_code: str = Field(
+        ...,
+        description="Novo código de recuperação gerado após o consumo do anterior (uso único)."
+    )
+
+
+class GenerateRecoveryCodeRequest(BaseModel):
+    current_password: Optional[str] = Field(
+        default=None,
+        description="Senha atual (obrigatória ao substituir um código já existente)."
+    )
+
+
+class GenerateRecoveryCodeResponse(BaseModel):
+    recovery_code: str
+    message: str
